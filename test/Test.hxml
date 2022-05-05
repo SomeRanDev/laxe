@@ -1,0 +1,10 @@
+-cp ../src/
+-cp .
+
+-D laxe-cp=.
+
+-main a.Test
+
+--macro laxe.Laxe.Start()
+
+-js Test.js
