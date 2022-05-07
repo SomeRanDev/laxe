@@ -1,6 +1,6 @@
 package laxe;
 
-#if macro
+#if (macro || laxeRuntime)
 
 import laxe.parsers.ModuleParser;
 
@@ -15,10 +15,12 @@ var ClassPaths = [];
 
 final LaxePathExtension = "lx";
 
+@:nullSafety(Strict)
 function AddClassPath(p: String) {
 	ClassPaths.push(p);
 }
 
+@:nullSafety(Strict)
 function GetClassPaths() {
 	final p = Context.definedValue("laxe-cp");
 	if(p != null) {
@@ -27,6 +29,7 @@ function GetClassPaths() {
 	return ClassPaths;
 }
 
+@:nullSafety(Strict)
 function Start() {
 	final paths = GetClassPaths();
 	for(p in paths) {
@@ -34,19 +37,20 @@ function Start() {
 	}
 }
 
+@:nullSafety(Strict)
 function LoadFiles(files: Array<String>, directoryString: String) {
 	for(f in files) {
 		final fullPath = Path.join([directoryString, f]);
-		trace(directoryString, fullPath);
 		final p = new Path(fullPath);
 		if(p.ext == LaxePathExtension) {
-			LoadFile(f, p);
+			LoadFile(fullPath, p);
 		} else if(FileSystem.isDirectory(f)) {
 			LoadFiles(FileSystem.readDirectory(f), f);
 		}
 	}
 }
 
+@:nullSafety(Strict)
 function LoadFile(f: String, p: Path) {
 	final m = new ModuleParser(f, p);
 	m.defineModule();

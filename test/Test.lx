@@ -1,2 +1,4 @@
+123
+
 def main():
 	trace("Hello Laxe!");

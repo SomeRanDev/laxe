@@ -1,6 +1,6 @@
 package laxe.parsers;
 
-#if macro
+#if (macro || laxeRuntime)
 
 import sys.io.File;
 
@@ -11,6 +11,7 @@ import haxe.macro.Expr.TypePath;
 import haxe.macro.Expr.ImportExpr;
 import haxe.macro.Expr.TypeDefinition;
 
+@:nullSafety(Strict)
 class ModuleParser {
 	var modulePath: String;
 	var types: Array<TypeDefinition>;
@@ -25,13 +26,13 @@ class ModuleParser {
 
 		final content = File.getContent(filePath);
 
-		Context.fatalError("Testing errors", Context.makePosition({
-			min: 0,
-			max: 10,
-			file: "Test.lx"
-		}));
+		final parser = new Parser(content, filePath);
+		trace(parser.parseNextValue());
+		
+		
+		//parser.parseExpr();
 
-		types.push({
+		/*types.push({
 			pos: Context.currentPos(),
 			pack: ["a"],
 			name: "main",
@@ -49,7 +50,7 @@ class ModuleParser {
 				}
 			}), []),
 			fields: []
-		});
+		});*/
 	}
 
 	function generateModulePath(p: Path) {

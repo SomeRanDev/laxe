@@ -1,2 +1,9 @@
+r"""ffd
+
+'
+
+\'
+fd"""
+
 def main():
 	trace("Hello Laxe!");
