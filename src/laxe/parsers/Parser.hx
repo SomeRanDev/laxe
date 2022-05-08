@@ -275,6 +275,12 @@ class Parser {
 		final valueParser = new ValueParser(this);
 		return valueParser.parseValueExpr();
 	}
+
+	// basic expr
+	public function parseNextBasicExpression(): Null<Expr> {
+		final expressionParser = new ExpressionParser(this);
+		return expressionParser.buildExpression();
+	}
 }
 
 #end

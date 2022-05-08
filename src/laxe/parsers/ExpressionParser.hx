@@ -1,13 +1,17 @@
 package laxe.parsers;
 
 #if (macro || laxeRuntime)
-/*
+
+import haxe.macro.Expr;
+
 import laxe.parsers.Parser;
 
 import laxe.ast.Operators.Operator;
+import laxe.ast.Operators.CallOperator;
 import laxe.ast.Operators.PrefixOperators;
 import laxe.ast.Operators.InfixOperators;
 import laxe.ast.Operators.SuffixOperators;
+import laxe.ast.Operators.CallOperators;
 
 enum ExpressionParserMode {
 	Prefix;
@@ -17,14 +21,17 @@ enum ExpressionParserMode {
 }
 
 enum ExpressionParserPiece {
-	Prefix(op: PrefixOperator, pos: Position);
-	Value(literal: Literal, pos: Position);
-	Suffix(op: SuffixOperator, pos: Position);
-	Call(op: CallOperator, params: Array<Expression>, pos: Position);
-	Infix(op: InfixOperator, pos: Position);
-	ExpressionPlaceholder(expression: Expression);
+	Value(value: Expr);
+
+	Prefix(op: Operator, pos: Position);
+	Suffix(op: Operator, pos: Position);
+	Call(op: CallOperator, params: Array<Expr>, pos: Position);
+	Infix(op: Operator, pos: Position);
+
+	Expression(e: Expr);
 }
 
+@:nullSafety(Strict)
 class ExpressionParser {
 	var parser: Parser;
 	var sameLine: Bool;
@@ -40,11 +47,11 @@ class ExpressionParser {
 		for(p in pieces) {
 			switch(p) {
 				case Prefix(op, pos): trace(op.op);
-				case Value(str, pos): trace(str);
+				case Value(e): trace(haxe.macro.ExprTools.toString(e));
 				case Suffix(op, pos): trace(op.op);
-				case Call(op, params, pos): trace(op.op + op.endOp);
+				case Call(op, params, pos): trace(op.op + op.opEnd);
 				case Infix(op, pos): trace(op.op);
-				case ExpressionPlaceholder(expr): trace(expr);
+				case Expression(expr): trace(expr);
 			}
 		}
 	}
@@ -138,9 +145,9 @@ class ExpressionParser {
 
 	function parseValue(): Bool {
 		final startIndex = parser.getIndex();
-		final literal = parser.parseNextLiteral();
-		if(literal != null) {
-			pieces.push(ExpressionParserPiece.Value(literal, parser.makePosition(startIndex)));
+		final value = parser.parseNextValue();
+		if(value != null) {
+			pieces.push(ExpressionParserPiece.Value(value));
 			return true;
 		}
 		return false;
@@ -155,7 +162,7 @@ class ExpressionParser {
 
 	function parseSuffix(): Bool {
 		final startIndex = parser.getIndex();
-		final op = checkForOperators(cast SuffixOperators.all());
+		final op = checkForOperators(SuffixOperators);
 		if(op != null) {
 			pieces.push(ExpressionParserPiece.Suffix(cast op, parser.makePosition(startIndex)));
 			parser.incrementIndex(op.op.length);
@@ -166,19 +173,19 @@ class ExpressionParser {
 
 	function parseCall(): Bool {
 		final startIndex = parser.getIndex();
-		final op: CallOperator = cast checkForOperators(cast CallOperators.all());
+		final op: CallOperator = cast checkForOperators(cast CallOperators);
 		if(op != null) {
 			parser.incrementIndex(op.op.length);
 
-			final exprs: Array<Expression> = [];
+			final exprs: Array<Expr> = [];
 			while(true) {
-				final exprParser = new ExpressionParser(parser, false, [",", op.endOp]);
+				final exprParser = new ExpressionParser(parser, false, [",", op.opEnd]);
 				if(exprParser.successful()) {
 					final result = exprParser.buildExpression();
 					if(result != null) {
 						exprs.push(result);
 					}
-					if(op.endOp == exprParser.foundString) {
+					if(op.opEnd == exprParser.foundString) {
 						break;
 					} else if(exprParser.foundString != null) {
 						parser.incrementIndex(exprParser.foundString.length);
@@ -189,7 +196,7 @@ class ExpressionParser {
 				}
 			}
 
-			parser.incrementIndex(op.endOp.length);
+			parser.incrementIndex(op.opEnd.length);
 			pieces.push(ExpressionParserPiece.Call(op, exprs, parser.makePosition(startIndex)));
 
 			return true;
@@ -199,7 +206,7 @@ class ExpressionParser {
 
 	function parseInfix(): Bool {
 		final startIndex = parser.getIndex();
-		final op = checkForOperators(cast InfixOperators.all());
+		final op = checkForOperators(InfixOperators);
 		if(op != null) {
 			pieces.push(ExpressionParserPiece.Infix(cast op, parser.makePosition(startIndex)));
 			parser.incrementIndex(op.op.length);
@@ -222,7 +229,7 @@ class ExpressionParser {
 		return result;
 	}
 
-	public function buildExpression(): Null<Expression> {
+	public function buildExpression(): Null<Expr> {
 		var parts = pieces.copy();
 		var error = false;
 		var errorThreshold = 0;
@@ -240,8 +247,12 @@ class ExpressionParser {
 						final piece = removeFromArray(parts, index);
 						if(piece != null) {
 							final expr = expressionPieceToExpression(piece);
-							if(expr != null) {
-								parts.insert(index, ExpressionPlaceholder(Prefix(op, expr, pos)));
+							final unop = stringToUnop(op.op);
+							if(expr != null && unop != null) {
+								parts.insert(index, Expression({
+									expr: EUnop(unop, false, expr),
+									pos: pos
+								}));
 							} else {
 								error = true;
 								break;
@@ -255,8 +266,12 @@ class ExpressionParser {
 						final piece = removeFromArray(parts, index - 1);
 						if(piece != null) {
 							final expr = expressionPieceToExpression(piece);
+							final unop = stringToUnop(op.op);
 							if(expr != null) {
-								parts.insert(index, ExpressionPlaceholder(Suffix(op, expr, pos)));
+								parts.insert(index, Expression({
+									expr: EUnop(unop, true, expr),
+									pos: pos
+								}));
 							} else {
 								error = true;
 								break;
@@ -270,8 +285,20 @@ class ExpressionParser {
 						final piece = removeFromArray(parts, index - 1);
 						if(piece != null) {
 							final expr = expressionPieceToExpression(piece);
-							if(expr != null) {
-								parts.insert(index - 1, ExpressionPlaceholder(Call(op, expr, params, pos)));
+							final haxeExpr = if(expr != null) {
+								if(op.op == "(") {
+									{
+										expr: ECall(expr, params),
+										pos: pos
+									}
+								} else {
+									null;
+								}
+							} else {
+								null;
+							}
+							if(haxeExpr != null) {
+								parts.insert(index - 1, Expression(haxeExpr));
 							} else {
 								error = true;
 								break;
@@ -287,8 +314,12 @@ class ExpressionParser {
 						if(lpiece != null && rpiece != null) {
 							final lexpr = expressionPieceToExpression(lpiece);
 							final rexpr = expressionPieceToExpression(rpiece);
-							if(lexpr != null && rexpr != null) {
-								parts.insert(index - 1, ExpressionPlaceholder(Infix(op, lexpr, rexpr, pos)));
+							final binop = stringToBinop(op.op);
+							if(lexpr != null && rexpr != null && binop != null) {
+								parts.insert(index - 1, Expression({
+									expr: EBinop(binop, lexpr, rexpr),
+									pos: pos
+								}));
 							} else {
 								error = true;
 								break;
@@ -315,7 +346,8 @@ class ExpressionParser {
 			}
 		}
 		if(error) {
-			Error.addError(CouldNotConstructExpression, parser, startingIndex);
+			// TODO
+			//Error.addError(CouldNotConstructExpression, parser, startingIndex);
 			return null;
 		} else if(parts.length == 1) {
 			return expressionPieceToExpression(parts[0]);
@@ -330,13 +362,11 @@ class ExpressionParser {
 		return null;
 	}
 
-	function expressionPieceToExpression(piece: ExpressionParserPiece): Null<Expression> {
-		switch(piece) {
-			case Value(literal, pos): return Value(literal, pos);
-			case ExpressionPlaceholder(expression): return expression;
-			default: {}
+	function expressionPieceToExpression(piece: ExpressionParserPiece): Null<Expr> {
+		return switch(piece) {
+			case Value(expression) | Expression(expression): expression;
+			case _: null;
 		}
-		return null;
 	}
 
 	function getNextOperatorIndex(parts: Array<ExpressionParserPiece>): Null<Int> {
@@ -383,6 +413,57 @@ class ExpressionParser {
 		}
 		return false;
 	}
+
+	function stringToUnop(s: String): Null<Unop> {
+		return switch(s) {
+			case "++": OpIncrement;
+			case "--": OpDecrement;
+			case "-": OpNeg;
+			case "!": OpNot;
+			case "~": OpNegBits;
+			case _: null;
+		}
+	}
+
+	function stringToBinop(s: String): Null<Binop> {
+		return switch(s) {
+			case "+": OpAdd;
+			case "*": OpMult;
+			case "/": OpDiv;
+			case "-": OpSub;
+			case "=": OpAssign;
+			case "==": OpEq;
+			case "!=": OpNotEq;
+			case ">": OpGt;
+			case ">=": OpGte;
+			case "<": OpLt;
+			case "<=": OpLte;
+			case "&": OpAnd;
+			case "|": OpOr;
+			case "^": OpXor;
+			case "&&": OpBoolAnd;
+			case "||": OpBoolOr;
+			case "<<": OpShl;
+			case ">>": OpShr;
+			case ">>>": OpUShr;
+			case "%": OpMod;
+			case "+=": OpAssignOp(OpAdd);
+			case "-=": OpAssignOp(OpSub);
+			case "/=": OpAssignOp(OpDiv);
+			case "*=": OpAssignOp(OpMult);
+			case "<<=": OpAssignOp(OpShl);
+			case ">>=": OpAssignOp(OpShr);
+			case ">>>=": OpAssignOp(OpUShr);
+			case "|=": OpAssignOp(OpOr);
+			case "&=": OpAssignOp(OpAnd);
+			case "^=": OpAssignOp(OpXor);
+			case "%=": OpAssignOp(OpMod);
+			case "...": OpInterval;
+			case "=>": OpArrow;
+			case "in": OpIn;
+			case _: null;
+		}
+	}
 }
-*/
+
 #end

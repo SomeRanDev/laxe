@@ -27,7 +27,7 @@ class ModuleParser {
 		final content = File.getContent(filePath);
 
 		final parser = new Parser(content, filePath);
-		trace(parser.parseNextValue());
+		trace(parser.parseNextBasicExpression());
 		
 		
 		//parser.parseExpr();

@@ -61,6 +61,11 @@ final SuffixOperators: Array<Operator> = [
 	new Operator("increment", "++", 16)
 ];
 
+final CallOperators: Array<CallOperator> = [
+	new CallOperator("call", "(", ")", 16),
+	new CallOperator("arrayAccess", "[", "]", 16)
+];
+
 class Operator {
 	public var name(default, null): String;
 	public var op(default, null): String;
@@ -70,6 +75,15 @@ class Operator {
 		this.name = name;
 		this.op = op;
 		this.priority = priority;
+	}
+}
+
+class CallOperator extends Operator {
+	public var opEnd(default, null): String;
+
+	public function new(name: String, op: String, opEnd: String, priority: Int) {
+		super(name, op, priority);
+		this.opEnd = opEnd;
 	}
 }
 
