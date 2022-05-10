@@ -1,4 +1,84 @@
-123 >> 123
+# comment
+
+###
+multi-
+line
+comment
+###
 
 def main():
-	trace("Hello Laxe!");
+	# semi-colon test
+	trace("Hello Laxe!"); trace("Helo Laxe2");
+
+	# bool
+	trace(true);
+
+	#number
+	trace(123);
+	trace(-432);
+	trace(3 - 3 * 2);
+	trace(3 - 3 * 2 == -3);
+
+	# string
+	trace("Hello World");
+	trace('Hello ${123}');
+
+	# variable
+	let a = 123;
+	trace(a * 2);
+
+	mut b = "Hello";
+	b += " World";
+	trace(b);
+
+	# block
+	block:
+		trace("this is inside block");
+
+	trace(block:
+		trace("this is also inside block");
+		"this will print outside block";
+	)
+
+	# if
+	if 3 == 3:
+		trace("this should print since 3 equals 3");
+	
+	# else
+	if 1 == 2:
+		trace("this should not print");
+	else if 2 == 3:
+		trace("this should also not print");
+	else:
+		trace("since everything else is false, this will print");
+
+	# else if
+	trace(if false:
+		"";
+	else if true:
+		"if statements are still exprs, but be careful with formatting!";
+	else:
+		""
+	)
+
+	# while
+	mut i = 1;
+	while i <= 3:
+		trace(i++);
+
+	# tuples
+	var t = (1, 2, 3);
+	trace(t);
+	trace(t.1);
+
+	# another function
+	anotherFunction();
+
+	# multi-file
+	sub.Another.helloFromLaxe();
+
+	# call haxe function
+	HaxeTest.helloFromHaxe();
+
+def anotherFunction() = trace("calling from another function")
+

@@ -1,0 +1,2 @@
+def helloFromLaxe():
+	trace("Hello from Laxe!");

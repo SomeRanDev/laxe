@@ -1,9 +1,0 @@
-r"""ffd
-
-'
-
-\'
-fd""" + 123
-
-def main():
-	trace("Hello Laxe!");

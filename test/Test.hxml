@@ -3,7 +3,7 @@
 
 -D laxe-cp=.
 
--main a.Test
+-main Test
 
 --macro laxe.Laxe.Start()
 

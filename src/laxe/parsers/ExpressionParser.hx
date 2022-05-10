@@ -3,6 +3,9 @@ package laxe.parsers;
 #if (macro || laxeRuntime)
 
 import haxe.macro.Expr;
+import haxe.macro.Context;
+
+import laxe.types.Tuple;
 
 import laxe.parsers.Parser;
 
@@ -13,408 +16,8 @@ import laxe.ast.Operators.InfixOperators;
 import laxe.ast.Operators.SuffixOperators;
 import laxe.ast.Operators.CallOperators;
 
-enum ExpressionParserMode {
-	Prefix;
-	Value;
-	Suffix;
-	Infix;
-}
-
-enum ExpressionParserPiece {
-	Value(value: Expr);
-
-	Prefix(op: Operator, pos: Position);
-	Suffix(op: Operator, pos: Position);
-	Call(op: CallOperator, params: Array<Expr>, pos: Position);
-	Infix(op: Operator, pos: Position);
-
-	Expression(e: Expr);
-}
-
-@:nullSafety(Strict)
 class ExpressionParser {
-	var parser: Parser;
-	var sameLine: Bool;
-	var mode: ExpressionParserMode;
-	var pieces: Array<ExpressionParserPiece>;
-	var expectedEndStrings: Null<Array<String>>;
-
-	var startingIndex: Int;
-	var foundExpectedString: Bool;
-	var foundString: Null<String>;
-
-	public function printAll() {
-		for(p in pieces) {
-			switch(p) {
-				case Prefix(op, pos): trace(op.op);
-				case Value(e): trace(haxe.macro.ExprTools.toString(e));
-				case Suffix(op, pos): trace(op.op);
-				case Call(op, params, pos): trace(op.op + op.opEnd);
-				case Infix(op, pos): trace(op.op);
-				case Expression(expr): trace(expr);
-			}
-		}
-	}
-
-	public function new(parser: Parser, sameLine: Bool = true, expectedEndStrings: Null<Array<String>> = null) {
-		this.parser = parser;
-		this.sameLine = sameLine;
-		this.expectedEndStrings = expectedEndStrings;
-		this.mode = Prefix;
-		pieces = [];
-
-		startingIndex = parser.getIndex();
-		foundExpectedString = expectedEndStrings == null;
-
-		parse();
-	}
-
-	public function successful() {
-		return pieces.length > 0 && foundExpectedString;
-	}
-
-	function parse() {
-		var cancelThreshold = 0;
-		while(parser.getIndex() < parser.getContent().length) {
-			parser.parseWhitespaceOrComments(sameLine);
-			var oldIndex = parser.getIndex();
-			switch(mode) {
-				case Prefix: {
-					if(!parsePrefix()) {
-						mode = Value;
-					}
-				}
-				case Value: {
-					final result = parseValue();
-					if(result) {
-						mode = Suffix;
-					} else {
-						break;
-					}
-				}
-				case Suffix: {
-					if(!parseSuffixOrCall()) {
-						mode = Infix;
-					}
-				}
-				case Infix: {
-					final result = parseInfix();
-					if(result) {
-						mode = Prefix;
-					} else {
-						break;
-					}
-				}
-			}
-
-			if(oldIndex == parser.getIndex()) {
-				cancelThreshold++;
-				if(++cancelThreshold > 10) {
-					break;
-				}
-			} else {
-				cancelThreshold = 0;
-			}
-		}
-
-		if(expectedEndStrings != null) {
-			parser.parseWhitespaceOrComments(sameLine);
-			for(str in expectedEndStrings) {
-				if(parser.checkAhead(str)) {
-					foundString = str;
-					foundExpectedString = true;
-				}
-			}
-			if(!foundExpectedString) {
-				// TODO: Unexpected Character After Expression
-				//Error.addError(UnexpectedCharacterAfterExpression, parser, parser.getIndex());
-			}
-		}
-	}
-
-	function parsePrefix(): Bool {
-		final startIndex = parser.getIndex();
-		final op = checkForOperators(PrefixOperators);
-		if(op != null) {
-			pieces.push(ExpressionParserPiece.Prefix(cast op, parser.makePosition(startIndex)));
-			parser.incrementIndex(op.op.length);
-			return true;
-		}
-		return false;
-	}
-
-	function parseValue(): Bool {
-		final startIndex = parser.getIndex();
-		final value = parser.parseNextValue();
-		if(value != null) {
-			pieces.push(ExpressionParserPiece.Value(value));
-			return true;
-		}
-		return false;
-	}
-
-	function parseSuffixOrCall(): Bool {
-		if(!parseSuffix()) {
-			return parseCall();
-		}
-		return true;
-	}
-
-	function parseSuffix(): Bool {
-		final startIndex = parser.getIndex();
-		final op = checkForOperators(SuffixOperators);
-		if(op != null) {
-			pieces.push(ExpressionParserPiece.Suffix(cast op, parser.makePosition(startIndex)));
-			parser.incrementIndex(op.op.length);
-			return true;
-		}
-		return false;
-	}
-
-	function parseCall(): Bool {
-		final startIndex = parser.getIndex();
-		final op: CallOperator = cast checkForOperators(cast CallOperators);
-		if(op != null) {
-			parser.incrementIndex(op.op.length);
-
-			final exprs: Array<Expr> = [];
-			while(true) {
-				final exprParser = new ExpressionParser(parser, false, [",", op.opEnd]);
-				if(exprParser.successful()) {
-					final result = exprParser.buildExpression();
-					if(result != null) {
-						exprs.push(result);
-					}
-					if(op.opEnd == exprParser.foundString) {
-						break;
-					} else if(exprParser.foundString != null) {
-						parser.incrementIndex(exprParser.foundString.length);
-						parser.parseWhitespaceOrComments();
-					}
-				} else {
-					break;
-				}
-			}
-
-			parser.incrementIndex(op.opEnd.length);
-			pieces.push(ExpressionParserPiece.Call(op, exprs, parser.makePosition(startIndex)));
-
-			return true;
-		}
-		return false;
-	}
-
-	function parseInfix(): Bool {
-		final startIndex = parser.getIndex();
-		final op = checkForOperators(InfixOperators);
-		if(op != null) {
-			pieces.push(ExpressionParserPiece.Infix(cast op, parser.makePosition(startIndex)));
-			parser.incrementIndex(op.op.length);
-			return true;
-		}
-		return false;
-	}
-
-	function checkForOperators(operators: Array<Operator>): Null<Operator> {
-		var opLength = 0;
-		var result: Null<Operator> = null;
-		for(op in operators) {
-			if(parser.checkAhead(op.op)) {
-				if(opLength < op.op.length) {
-					opLength = op.op.length;
-					result = op;
-				}
-			}
-		}
-		return result;
-	}
-
-	public function buildExpression(): Null<Expr> {
-		var parts = pieces.copy();
-		var error = false;
-		var errorThreshold = 0;
-		while(parts.length > 1) {
-			final currSize = parts.length;
-			final index = getNextOperatorIndex(parts);
-			if(index != null) {
-				final removedPiece = removeFromArray(parts, index);
-				if(removedPiece == null) {
-					error = true;
-					break;
-				}
-				switch(removedPiece) {
-					case Prefix(op, pos): {
-						final piece = removeFromArray(parts, index);
-						if(piece != null) {
-							final expr = expressionPieceToExpression(piece);
-							final unop = stringToUnop(op.op);
-							if(expr != null && unop != null) {
-								parts.insert(index, Expression({
-									expr: EUnop(unop, false, expr),
-									pos: pos
-								}));
-							} else {
-								error = true;
-								break;
-							}
-						} else {
-							error = true;
-							break;
-						}
-					}
-					case Suffix(op, pos): {
-						final piece = removeFromArray(parts, index - 1);
-						if(piece != null) {
-							final expr = expressionPieceToExpression(piece);
-							final unop = stringToUnop(op.op);
-							if(expr != null) {
-								parts.insert(index, Expression({
-									expr: EUnop(unop, true, expr),
-									pos: pos
-								}));
-							} else {
-								error = true;
-								break;
-							}
-						} else {
-							error = true;
-							break;
-						}
-					}
-					case Call(op, params, pos): {
-						final piece = removeFromArray(parts, index - 1);
-						if(piece != null) {
-							final expr = expressionPieceToExpression(piece);
-							final haxeExpr = if(expr != null) {
-								if(op.op == "(") {
-									{
-										expr: ECall(expr, params),
-										pos: pos
-									}
-								} else {
-									null;
-								}
-							} else {
-								null;
-							}
-							if(haxeExpr != null) {
-								parts.insert(index - 1, Expression(haxeExpr));
-							} else {
-								error = true;
-								break;
-							}
-						} else {
-							error = true;
-							break;
-						}
-					}
-					case Infix(op, pos): {
-						final lpiece = removeFromArray(parts, index - 1);
-						final rpiece = removeFromArray(parts, index - 1);
-						if(lpiece != null && rpiece != null) {
-							final lexpr = expressionPieceToExpression(lpiece);
-							final rexpr = expressionPieceToExpression(rpiece);
-							final binop = stringToBinop(op.op);
-							if(lexpr != null && rexpr != null && binop != null) {
-								parts.insert(index - 1, Expression({
-									expr: EBinop(binop, lexpr, rexpr),
-									pos: pos
-								}));
-							} else {
-								error = true;
-								break;
-							}
-						} else {
-							error = true;
-							break;
-						}
-					}
-					default: {}
-				}
-			} else {
-				error = true;
-				break;
-			}
-
-			if(currSize == parts.length) {
-				if(++errorThreshold > 10) {
-					error = true;
-					break;
-				} else {
-					errorThreshold = 0;
-				}
-			}
-		}
-		if(error) {
-			// TODO
-			//Error.addError(CouldNotConstructExpression, parser, startingIndex);
-			return null;
-		} else if(parts.length == 1) {
-			return expressionPieceToExpression(parts[0]);
-		}
-		return null;
-	}
-
-	function removeFromArray(arr: Array<ExpressionParserPiece>, index: Int): Null<ExpressionParserPiece> {
-		if(index >= 0 && index < arr.length) {
-			return arr.splice(index, 1)[0];
-		}
-		return null;
-	}
-
-	function expressionPieceToExpression(piece: ExpressionParserPiece): Null<Expr> {
-		return switch(piece) {
-			case Value(expression) | Expression(expression): expression;
-			case _: null;
-		}
-	}
-
-	function getNextOperatorIndex(parts: Array<ExpressionParserPiece>): Null<Int> {
-		var nextOperatorIndex: Null<Int> = null;
-		var nextOperatorPriority = -0xffff;
-		for(i in 0...parts.length) {
-			final piece = parts[i];
-			final priority = getPiecePriority(piece);
-			final reverse = isPieceReversePriority(piece);
-			if(priority > nextOperatorPriority || (priority == nextOperatorPriority && reverse)) {
-				nextOperatorIndex = i;
-				nextOperatorPriority = priority;
-			}
-		}
-		return nextOperatorIndex;
-	}
-
-	function getPiecePriority(piece: ExpressionParserPiece): Int {
-		switch(piece) {
-			case Prefix(op, pos): {
-				return op.priority;
-			}
-			case Suffix(op, pos): {
-				return op.priority;
-			}
-			case Infix(op, pos): {
-				return op.priority;
-			}
-			case Call(op, params, pos): {
-				return op.priority;
-			}
-			default: {
-				return 0;
-			}
-		}
-	}
-
-	function isPieceReversePriority(piece: ExpressionParserPiece): Bool {
-		switch(piece) {
-			case Prefix(_): {
-				return true;
-			}
-			default: {}
-		}
-		return false;
-	}
-
-	function stringToUnop(s: String): Null<Unop> {
+	static function stringToUnop(s: String): Null<Unop> {
 		return switch(s) {
 			case "++": OpIncrement;
 			case "--": OpDecrement;
@@ -425,7 +28,7 @@ class ExpressionParser {
 		}
 	}
 
-	function stringToBinop(s: String): Null<Binop> {
+	static function stringToBinop(s: String): Null<Binop> {
 		return switch(s) {
 			case "+": OpAdd;
 			case "*": OpMult;
@@ -463,6 +66,344 @@ class ExpressionParser {
 			case "in": OpIn;
 			case _: null;
 		}
+	}
+
+	static function isComponentAccess(fieldName: String) {
+		var result = true;
+		final firstCharCode = fieldName.charCodeAt(0);
+		if(firstCharCode >= 49 && firstCharCode <= 57) {
+			for(i in 1...fieldName.length) {
+				final charCode = fieldName.charCodeAt(i);
+				if(charCode < 48 || charCode > 57) {
+					result = false;
+					break;
+				}
+			}
+		} else {
+			result = false;
+		}
+		return result;
+	}
+
+	static function checkForOperators(parser: Parser, operators: Array<Operator>): Null<Operator> {
+		var opLength = 0;
+		var result: Null<Operator> = null;
+		for(op in operators) {
+			if(parser.checkAhead(op.op)) {
+				if(opLength < op.op.length) {
+					opLength = op.op.length;
+					result = op;
+				}
+			}
+		}
+		return result;
+	}
+
+	public static function expr(p: Parser): Expr {
+		final result = maybeExpr(p);
+		if(result != null) {
+			return result;
+		}
+		p.error("Invalid expression", p.herePosition());
+		return p.nullExpr();
+	}
+
+	public static function maybeExpr(p: Parser): Null<Expr> {
+		p.parseWhitespaceOrComments();
+
+		final startIndex = p.getIndex();
+
+		// ***************************************
+		// * Prefix Operators
+		// ***************************************
+		final prefix = checkForOperators(p, PrefixOperators);
+		if(prefix != null) {
+			p.incrementIndex(prefix.op.length);
+			final nextExpr = expr(p);
+			return addPrefixToExpr(prefix, p.makePosition(startIndex), nextExpr, p);
+		}
+
+		// ***************************************
+		// * Parenthesis and Tuple
+		// ***************************************
+		if(p.checkAhead("(")) {
+			p.incrementIndex(1);
+			final exprs = p.parseNextExpressionList(")");
+			final pos = p.makePosition(startIndex);
+			if(exprs.length == 1) {
+				return post_expr(p, {
+					expr: EParenthesis(exprs[0]),
+					pos: pos
+				});
+			} else {
+				return post_expr(p, Tuple.makeTupleExpr(exprs, pos));
+			}
+		}
+
+		// ***************************************
+		// * Variable initialization
+		// ***************************************
+		{
+			var varIdent = p.tryParseOneIdent("var", "let", "mut");
+			if(varIdent != null) {
+				final varName = p.parseNextIdent();
+				if(varName != null) {
+					p.parseWhitespaceOrComments();
+
+					if(p.checkAhead(":")) {
+						p.incrementIndex(1);
+
+						// TODO: parse type
+					}
+
+					final e = if(p.checkAhead("=")) {
+						p.incrementIndex(1);
+						expr(p);
+					} else {
+						null;
+					}
+
+					final pos = p.makePosition(startIndex);
+					return {
+						expr: EVars([
+							{
+								name: varName.ident,
+								expr: e,
+								isFinal: varIdent.ident == "let"
+							}
+						]),
+						pos: pos
+					};
+				} else {
+					p.error("Expected variable name", p.herePosition());
+				}
+			}
+		}
+
+		// ***************************************
+		// * Block expression
+		// ***************************************
+		{
+			final block = p.tryParseIdent("block");
+			if(block != null) {
+				return p.parseBlock();
+			}
+		}
+
+		// ***************************************
+		// * If expression
+		// ***************************************
+		{
+			final ifkey = p.tryParseIdent("if");
+			final ifIndent = p.getIndent();
+			if(ifkey != null) {
+				final cond = expr(p);
+				final block = p.parseBlock();
+
+				final elseIfExpr: Array<{ cond: Expr, e: Expr, p: Position }> = [];
+				var elseExpr: Null<Expr> = null;
+				while(!p.ended) {
+					final state = p.saveParserState();
+					p.parseWhitespaceOrComments();
+
+					var found = false;
+					if(p.getIndent() == ifIndent) {
+						final elseStartIndex = p.getIndex();
+						final elseKey = p.tryParseIdent("else");
+						if(elseKey != null) {
+							p.parseWhitespaceOrComments();
+							final elseIfKey = p.tryParseIdent("if");
+							if(elseIfKey != null) {
+								final eicond = expr(p);
+								final block = p.parseBlock();
+								elseIfExpr.push({
+									cond: eicond,
+									e: block,
+									p: p.makePosition(elseStartIndex)
+								});
+								found = true;
+							} else {
+								final block = p.parseBlock();
+								elseExpr = block;
+								found = true;
+								break;
+							}
+						}
+					}
+					
+					if(!found) {
+						p.restoreParserState(state);
+						break;
+					}
+				}
+				
+				var finalElseExpr = elseExpr;
+				var i = (elseIfExpr.length - 1);
+				while(i >= 0) {
+					final curr = elseIfExpr[i];
+					finalElseExpr = {
+						expr: EIf(curr.cond, curr.e, finalElseExpr),
+						pos: curr.p
+					};
+					i--;
+				}
+
+				return {
+					expr: EIf(cond, block, finalElseExpr),
+					pos: p.mergePos(ifkey.pos, block.pos)
+				};
+			}
+		}
+
+		// ***************************************
+		// * While expression
+		// ***************************************
+		{
+			final whileKey = p.tryParseIdent("while");
+			if(whileKey != null) {
+				final cond = expr(p);
+				final block = p.parseBlock();
+				return {
+					expr: EWhile(cond, block, true),
+					pos: p.mergePos(whileKey.pos, block.pos)
+				};
+			}
+		}
+
+		// ***************************************
+		// * Value (Ident, Int, Float, String, Array, Struture, etc.)
+		// ***************************************
+		final value = p.parseNextValue();
+		if(value != null) {
+			return post_expr(p, value);
+		}
+
+		// ***************************************
+		// * If all else fails...
+		// ***************************************
+		return null;
+	}
+	
+	static function post_expr(p: Parser, e: Expr): Expr {
+		p.parseWhitespaceOrComments();
+
+		final startIndex = p.getIndex();
+
+		// ***************************************
+		// * Field Access
+		// ***************************************
+		{
+			final dot = #if (haxe_ver >= 4.3) p.checkAhead("?.") ? 2 : #end (p.checkAhead(".") ? 1 : 0);
+			if(dot > 0) {
+				p.incrementIndex(dot);
+
+				#if (haxe_ver >= 4.3)
+				final accessType = dot == 2 ? EFSafe : EFNormal;
+				#end
+
+				final fieldName = p.parseNextIdentMaybeNumberStartOrElse();
+				final pos = p.mergePos(e.pos, fieldName.pos);
+
+				if(isComponentAccess(fieldName.ident)) {
+					final accessExpr = {
+						expr: EField(e, "component" + fieldName.ident #if (haxe_ver >= 4.3) , accessType #end),
+						pos: pos
+					};
+					return post_expr(p, {
+						expr: ECall(accessExpr, []),
+						pos: pos
+					});
+				}
+
+				return post_expr(p, {
+					expr: EField(e, fieldName.ident #if (haxe_ver >= 4.3) , accessType #end),
+					pos: pos
+				});
+			}
+		}
+
+		// ***************************************
+		// * Suffix Operators
+		// ***************************************
+		final suffix = checkForOperators(p, SuffixOperators);
+		if(suffix != null) {
+			p.incrementIndex(suffix.op.length);
+			return post_expr(p, {
+				expr: EUnop(stringToUnop(suffix.op), true, e),
+				pos: p.makePosition(startIndex)
+			});
+		}
+
+		// ***************************************
+		// * Call Operator
+		// ***************************************
+		if(p.checkAhead("(")) {
+			p.incrementIndex(1);
+			final exprs = p.parseNextExpressionList(")");
+			final pos = p.makePosition(startIndex);
+			return post_expr(p, {
+				expr: ECall(e, exprs),
+				pos: pos
+			});
+		}
+
+		// ***************************************
+		// * Infix Operators
+		// ***************************************
+		final infix = checkForOperators(p, InfixOperators);
+		if(infix != null) {
+			p.incrementIndex(infix.op.length);
+			final nextExpr = expr(p);
+			return addInfixToExpr(infix, p.makePosition(startIndex), e, nextExpr, p);
+		}
+
+		// ***************************************
+		// * If all else fails...
+		// ***************************************
+		return e;
+	}
+
+	static function addInfixToExpr(o: Operator, op: Position, e1: Expr, e2: Expr, p: Parser): Expr {
+		switch(e2.expr) {
+			case EBinop(binop, be1, be2): {
+				var leftPriority = o.priority;
+				var rightPriority = 0;
+				for(i in InfixOperators) {
+					if(stringToBinop(i.op) == binop) {
+						rightPriority = i.priority;
+						break;
+					}
+				}
+
+				if(leftPriority >= rightPriority) {
+					final leftExpr = addInfixToExpr(o, op, e1, be1, p);
+					return {
+						expr: EBinop(binop, leftExpr, be2),
+						pos: p.mergePos(leftExpr.pos, be2.pos)
+					};
+				}
+			}
+			case _:
+		}
+
+		return {
+			expr: EBinop(stringToBinop(o.op), e1, e2),
+			pos: p.mergePos(e1.pos, e2.pos)
+		};
+	}
+
+	static function addPrefixToExpr(o: Operator, op: Position, e: Expr, p: Parser): Expr {
+		final exprDef = switch(e.expr) {
+			case EBinop(binop, e1, e2): EBinop(binop, addPrefixToExpr(o, op, e1, p), e2);
+			case ETernary(econd, eif, eelse): ETernary(addPrefixToExpr(o, op, econd, p), eif, eelse);
+			case EIs(eis, t): EIs(addPrefixToExpr(o, op, eis, p), t);
+			case _: EUnop(stringToUnop(o.op), false, e);
+		}
+
+		return {
+			expr: exprDef,
+			pos: p.mergePos(op, e.pos)
+		};
 	}
 }
 

@@ -15,10 +15,20 @@ class ParserState {
 	public var lineNumber(default, null): Int;
 	public var ended(default, null): Bool;
 
+	var lineStartIndex: Int;
+	var lineIndent: String;
+	var touchedContentOnThisLine: Bool;
+
 	public function new(parser: Parser) {
 		index = parser.index;
 		lineNumber = parser.lineNumber;
 		ended = parser.ended;
+
+		@:privateAccess {
+			lineStartIndex = parser.lineStartIndex;
+			lineIndent = parser.lineIndent;
+			touchedContentOnThisLine = parser.touchedContentOnThisLine;
+		}
 	}
 }
 
@@ -32,6 +42,7 @@ class Parser {
 	public var ended(default, null): Bool = false;
 	public var lineNumber(default, null): Int = 0;
 
+	var lineStartIndex: Int = 0;
 	var lineIndent: String = "";
 	var touchedContentOnThisLine: Bool = false;
 
@@ -44,6 +55,7 @@ class Parser {
 	// access
 	public function getIndex(): Int { return index; }
 	public function getContent(): String { return content; }
+	public function getIndent(): String { return lineIndent; }
 
 	// save/restore state
 	public function saveParserState(): ParserState {
@@ -54,11 +66,60 @@ class Parser {
 		index = state.index;
 		lineNumber = state.lineNumber;
 		ended = state.ended;
+
+		@:privateAccess {
+			lineStartIndex = state.lineStartIndex;
+			lineIndent = state.lineIndent;
+			touchedContentOnThisLine = state.touchedContentOnThisLine;
+		}
 	}
 
 	// position
+	public function noPosition() {
+		return Context.makePosition({
+			min: 0,
+			max: 0,
+			file: ""
+		});
+	}
+
+	public function herePosition() {
+		return makePosition(getIndex());
+	}
+
 	public function makePosition(start: Int) {
 		return Context.makePosition({ min: start, max: index, file: filePath });
+	}
+
+	public function makePositionExact(start: Int, end: Int) {
+		return Context.makePosition({ min: start, max: end, file: filePath });
+	}
+
+	public function mergePos(position1: Position, position2: Position): Position {
+		final p1 = Context.getPosInfos(position1);
+		final p2 = Context.getPosInfos(position2);
+		if(p1.file == p2.file) {
+			return Context.makePosition({
+				min: p1.min < p2.min ? p1.min : p2.min,
+				max: p1.max > p2.max ? p1.max : p2.max,
+				file: p1.file
+			});
+		}
+		error("Positions from different files cannot be merged.", position1);
+		return position1;
+	}
+
+	public function nullExpr(): Expr {
+		return { expr: EConst(CIdent("null")), pos: noPosition() };
+	}
+
+	// error report
+	public function error(msg: String, pos: Position) {
+		Context.fatalError(msg, pos);
+	}
+
+	public function warn(msg: String, pos: Position) {
+		Context.warning(msg, pos);
 	}
 
 	// simple parsing access
@@ -203,6 +264,7 @@ class Parser {
 
 	function incrementLine() {
 		lineNumber++;
+		lineStartIndex = getIndex() + 1;
 	}
 
 	// identifier parsing
@@ -223,6 +285,31 @@ class Parser {
 		return isNumberChar(c) || isIdentCharStarter(c);
 	}
 
+	public function parseNextIdentMaybeNumberStart(): Null<StringAndPos> {
+		parseWhitespaceOrComments();
+		final startIndex = getIndex();
+		var result = null;
+		if(isIdentChar(currentCharCode())) {
+			result = "";
+			while(isIdentChar(currentCharCode())) {
+				result += currentChar();
+				if(incrementIndex(1)) {
+					break;
+				}
+			}
+		}
+		return result == null ? null : { ident: result, pos: makePosition(startIndex) };
+	}
+
+	public function parseNextIdentMaybeNumberStartOrElse(): StringAndPos {
+		final result = parseNextIdentMaybeNumberStart();
+		if(result == null) {
+			error("Expected identifier", makePosition(getIndex()));
+			return { ident: "", pos: noPosition() };
+		}
+		return result;
+	}
+
 	public function parseNextIdent(): Null<StringAndPos> {
 		parseWhitespaceOrComments();
 		final startIndex = getIndex();
@@ -237,6 +324,15 @@ class Parser {
 			}
 		}
 		return result == null ? null : { ident: result, pos: makePosition(startIndex) };
+	}
+
+	public function parseNextIdentOrElse(): StringAndPos {
+		final result = parseNextIdent();
+		if(result == null) {
+			error("Expected identifier", makePosition(getIndex()));
+			return { ident: "", pos: noPosition() };
+		}
+		return result;
 	}
 
 	public function tryParseIdent(ident: String): Null<StringAndPos> {
@@ -277,9 +373,90 @@ class Parser {
 	}
 
 	// basic expr
-	public function parseNextBasicExpression(): Null<Expr> {
-		final expressionParser = new ExpressionParser(this);
-		return expressionParser.buildExpression();
+	public function parseNextExpression(): Null<Expr> {
+		return ExpressionParser.expr(this);
+	}
+
+	public function parseNextExpressionList(endChar: String): Array<Expr> {
+		final exprs = [];
+		while(!ended) {
+			parseWhitespaceOrComments();
+			if(checkAhead(endChar)) {
+				incrementIndex(endChar.length);
+				break;
+			} else {
+				exprs.push(parseNextExpression());
+				parseWhitespaceOrComments();
+				if(checkAhead(",")) {
+					incrementIndex(1);
+				} else if(checkAhead(endChar)) {
+					incrementIndex(endChar.length);
+					break;
+				} else {
+					error("Unexpected content", herePosition());
+				}
+			}
+		}
+
+		return exprs;
+	}
+
+	public function parseBlock(): Expr {
+		final exprs = [];
+
+		final startIndex = getIndex();
+
+		if(parseNextContent(":")) {
+			final parentLineIdent = lineIndent;
+			var lastLineNumber = lineNumber;
+			parseWhitespaceOrComments();
+
+			var blockIdent: Null<String> = null;
+
+			if(lastLineNumber != lineNumber) {
+				if(lineIndent.length > parentLineIdent.length && StringTools.startsWith(lineIndent, parentLineIdent)) {
+					blockIdent = lineIndent;
+				}
+			} else {
+				error("Expected new line", herePosition());
+			}
+
+			var endIndex = startIndex;
+			if(blockIdent != null) {
+				while(!ended) {
+					if(lastLineNumber != lineNumber) {
+						lastLineNumber = lineNumber;
+						if(lineIndent == blockIdent) {
+							exprs.push(parseNextExpression());
+							endIndex = getIndex();
+							parseWhitespaceOrComments();
+						} else if(!StringTools.startsWith(blockIdent, lineIndent)) {
+							error("Inconsistent ident", makePosition(lineStartIndex));
+						} else {
+							break;
+						}
+					} else if(checkAhead(";")) {
+						incrementIndex(1);
+						parseWhitespaceOrComments();
+						if(lastLineNumber == lineNumber) {
+							exprs.push(parseNextExpression());
+							endIndex = getIndex();
+							parseWhitespaceOrComments();
+						}
+					} else {
+						break;
+					}
+				}
+			}
+
+			return {
+				expr: EBlock(exprs),
+				pos: makePositionExact(startIndex, endIndex)
+			};
+		}
+
+		error("Expected :", herePosition());
+		return nullExpr();
 	}
 }
 

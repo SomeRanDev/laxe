@@ -44,8 +44,8 @@ function LoadFiles(files: Array<String>, directoryString: String) {
 		final p = new Path(fullPath);
 		if(p.ext == LaxePathExtension) {
 			LoadFile(fullPath, p);
-		} else if(FileSystem.isDirectory(f)) {
-			LoadFiles(FileSystem.readDirectory(f), f);
+		} else if(FileSystem.isDirectory(fullPath)) {
+			LoadFiles(FileSystem.readDirectory(fullPath), fullPath);
 		}
 	}
 }

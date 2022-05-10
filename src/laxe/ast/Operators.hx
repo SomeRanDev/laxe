@@ -13,6 +13,9 @@ final PrefixOperators: Array<Operator> = [
 
 final InfixOperators: Array<Operator> = [
 	new Operator("dotAccess", ".", 16),
+	#if (haxe_ver >= 4.3)
+	new Operator("safeDotAccess", "?.", 16),
+	#end
 
 	new Operator("multiply", "*", 14),
 	new Operator("divide", "/", 14),

@@ -1,5 +1,6 @@
 package laxe.parsers;
 
+import laxe.types.Tuple;
 #if (macro || laxeRuntime)
 
 import sys.io.File;
@@ -27,30 +28,21 @@ class ModuleParser {
 		final content = File.getContent(filePath);
 
 		final parser = new Parser(content, filePath);
-		trace(parser.parseNextBasicExpression());
-		
-		
-		//parser.parseExpr();
 
-		/*types.push({
-			pos: Context.currentPos(),
-			pack: ["a"],
-			name: "main",
-			kind: TDField(FFun({
-				args: [],
-				expr: {
-					pos: Context.currentPos(),
-					expr: ECall({
-						pos: Context.currentPos(),
-						expr: EConst(CIdent("trace"))
-					}, [{
-						pos: Context.currentPos(),
-						expr: EConst(CString("wwwwww"))
-					}])
-				}
-			}), []),
-			fields: []
-		});*/
+		var lastIndex = null;
+
+		while(!parser.ended) {
+			parser.parseWhitespaceOrComments();
+
+			if(lastIndex != parser.getIndex()) {
+				lastIndex = parser.getIndex();
+			} else {
+				parser.error("Unexpected content", parser.herePosition());
+				break;
+			}
+
+			parseFunction(parser);
+		}
 	}
 
 	function generateModulePath(p: Path) {
@@ -66,6 +58,39 @@ class ModuleParser {
 
 	public function defineModule() {
 		Context.defineModule(modulePath, types, imports, usings);
+	}
+
+	function parseFunction(p: Parser) {
+		final startIndex = p.getIndex();
+		final def = p.tryParseIdent("def");
+		if(def != null) {
+			p.parseWhitespaceOrComments();
+			final name = p.parseNextIdent();
+			p.parseWhitespaceOrComments();
+			if(p.checkAhead("()")) {
+				p.incrementIndex(2);
+				p.parseWhitespaceOrComments();
+				final expr = if(p.checkAhead(":")) {
+					p.parseBlock();
+				} else if(p.checkAhead("=")) {
+					p.incrementIndex(1);
+					p.parseWhitespaceOrComments();
+					p.parseNextExpression();
+				} else {
+					null;
+				}
+				types.push({
+					pos: p.makePosition(startIndex),
+					pack: [],
+					name: name.ident,
+					kind: TDField(FFun({
+						args: [],
+						expr: expr
+					}), []),
+					fields: []
+				});
+			}
+		}
 	}
 }
 
