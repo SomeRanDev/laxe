@@ -10,11 +10,10 @@ import laxe.types.Tuple;
 import laxe.parsers.Parser;
 
 import laxe.ast.Operators.Operator;
-import laxe.ast.Operators.CallOperator;
 import laxe.ast.Operators.PrefixOperators;
 import laxe.ast.Operators.InfixOperators;
 import laxe.ast.Operators.SuffixOperators;
-import laxe.ast.Operators.CallOperators;
+import laxe.ast.Operators.IntervalOperator;
 
 class ExpressionParser {
 	static function stringToUnop(s: String): Null<Unop> {
@@ -253,6 +252,35 @@ class ExpressionParser {
 		}
 
 		// ***************************************
+		// * For expression
+		// ***************************************
+		{
+			final forKey = p.tryParseIdent("for");
+			if(forKey != null) {
+				final cond = expr(p);
+				final block = p.parseBlock();
+				return {
+					expr: EFor(cond, block),
+					pos: p.mergePos(forKey.pos, block.pos)
+				};
+			}
+		}
+
+		// ***************************************
+		// * Loop expression
+		// ***************************************
+		{
+			final loopKey = p.tryParseIdent("loop");
+			if(loopKey != null) {
+				final block = p.parseBlock();
+				return {
+					expr: EWhile(macro true, block, true),
+					pos: p.mergePos(loopKey.pos, block.pos)
+				};
+			}
+		}
+
+		// ***************************************
 		// * While expression
 		// ***************************************
 		{
@@ -282,6 +310,52 @@ class ExpressionParser {
 		}
 
 		// ***************************************
+		// * Throw expression
+		// ***************************************
+		{
+			final throwKey = p.tryParseIdent("throw");
+			if(throwKey != null) {
+				final e = expr(p);
+				return {
+					expr: EThrow(e),
+					pos: p.mergePos(throwKey.pos, e.pos)
+				};
+			}
+		}
+
+		// ***************************************
+		// * Untyped expression
+		// ***************************************
+		{
+			final untypedKey = p.tryParseIdent("untyped");
+			if(untypedKey != null) {
+				final e = expr(p);
+				return {
+					expr: EUntyped(e),
+					pos: p.mergePos(untypedKey.pos, e.pos)
+				};
+			}
+		}
+
+		// ***************************************
+		// * Pass, break, continue expression
+		// ***************************************
+		{
+			final ident = p.tryParseOneIdent("pass", "break", "continue");
+			if(ident != null) {
+				final exprDef = switch(ident.ident) {
+					case "break": EBreak;
+					case "continue": EContinue;
+					case _: EConst(CIdent("null"));
+				}
+				return {
+					expr: exprDef,
+					pos: ident.pos
+				};
+			}
+		}
+
+		// ***************************************
 		// * Value (Ident, Int, Float, String, Array, Struture, etc.)
 		// ***************************************
 		final value = p.parseNextValue();
@@ -299,6 +373,16 @@ class ExpressionParser {
 		p.parseWhitespaceOrComments();
 
 		final startIndex = p.getIndex();
+
+		// ***************************************
+		// * OpInterval
+		// ***************************************
+		{
+			if(p.findAndParseNextContent("...")) {
+				final nextExpr = expr(p);
+				return addInfixToExpr(IntervalOperator, p.makePosition(startIndex), e, nextExpr, p);
+			}
+		}
 
 		// ***************************************
 		// * Field Access

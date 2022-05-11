@@ -80,7 +80,9 @@ class ModuleParser {
 				p.parseBlock();
 			} else if(p.findAndParseNextContent("=")) {
 				p.parseWhitespaceOrComments();
-				p.parseNextExpression();
+				final result = p.parseNextExpression();
+				p.findAndParseNextContent(";");
+				result;
 			} else {
 				null;
 			}

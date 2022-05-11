@@ -3,48 +3,54 @@ package laxe.ast;
 #if (macro || laxeRuntime)
 
 final PrefixOperators: Array<Operator> = [
-	new Operator("positive", "-", 15),
-	new Operator("negative", "+", 15),
-	new Operator("logicNot", "!", 15),
-	new Operator("bitNot", "~", 15),
-	new Operator("preDecrement", "--", 15),
-	new Operator("preIncrement", "++", 15)
+	new Operator("positive", "-", 16),
+	new Operator("negative", "+", 16),
+	new Operator("logicNot", "!", 16),
+	new Operator("bitNot", "~", 16),
+	new Operator("preDecrement", "--", 16),
+	new Operator("preIncrement", "++", 16)
 ];
 
+final IntervalOperator = new Operator("interval", "...", 17);
+
 final InfixOperators: Array<Operator> = [
-	new Operator("dotAccess", ".", 16),
+	new Operator("dotAccess", ".", 18),
 	#if (haxe_ver >= 4.3)
-	new Operator("safeDotAccess", "?.", 16),
+	new Operator("safeDotAccess", "?.", 18),
 	#end
 
-	new Operator("multiply", "*", 14),
-	new Operator("divide", "/", 14),
-	new Operator("modulus", "%", 14),
+	new Operator("multiply", "*", 15),
+	new Operator("divide", "/", 15),
+	new Operator("modulus", "%", 15),
 
-	new Operator("add", "+", 13),
-	new Operator("subtract", "-", 13),
+	new Operator("add", "+", 14),
+	new Operator("subtract", "-", 14),
 
-	new Operator("shiftLeft", "<<", 12),
-	new Operator("shiftRight", ">>", 12),
+	new Operator("shiftLeft", "<<", 13),
+	new Operator("shiftRight", ">>", 13),
 
-	new Operator("spaceship", "<=>", 11),
+	new Operator("spaceship", "<=>", 12),
 
-	new Operator("lessThen", "<", 9),
-	new Operator("lessThanOrEqual", "<=", 9),
-	new Operator("greaterThan", ">", 9),
-	new Operator("greaterThanOrEqual", ">=", 9),
+	new Operator("lessThen", "<", 10),
+	new Operator("lessThanOrEqual", "<=", 10),
+	new Operator("greaterThan", ">", 10),
+	new Operator("greaterThanOrEqual", ">=", 10),
 
-	new Operator("equals", "==", 8),
-	new Operator("notEquals", "!=", 8),
+	new Operator("equals", "==", 9),
+	new Operator("notEquals", "!=", 9),
 
-	new Operator("bitAnd", "&", 7),
-	new Operator("bitXOr", "^", 6),
-	new Operator("bitOr", "|", 5),
+	new Operator("bitAnd", "&", 8),
+	new Operator("bitXOr", "^", 7),
+	new Operator("bitOr", "|", 6),
 
-	new Operator("nullOr", "??", 4),
+	new Operator("nullOr", "??", 5),
 
-	new Operator("logicAnd", "&&", 3),
-	new Operator("logicOr", "||", 2),
+	new Operator("logicAnd", "&&", 4),
+	new Operator("logicOr", "||", 3),
+
+	IntervalOperator,
+	new Operator("in", "in", 2),
+	new Operator("is", "is", 2),
 
 	new Operator("assign", "=", 1),
 	new Operator("addAssign", "+=", 1),
@@ -60,13 +66,13 @@ final InfixOperators: Array<Operator> = [
 ];
 
 final SuffixOperators: Array<Operator> = [
-	new Operator("decrement", "--", 16),
-	new Operator("increment", "++", 16)
+	new Operator("decrement", "--", 18),
+	new Operator("increment", "++", 18)
 ];
 
 final CallOperators: Array<CallOperator> = [
-	new CallOperator("call", "(", ")", 16),
-	new CallOperator("arrayAccess", "[", "]", 16)
+	new CallOperator("call", "(", ")", 18),
+	new CallOperator("arrayAccess", "[", "]", 18)
 ];
 
 class Operator {

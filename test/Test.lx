@@ -61,10 +61,28 @@ def main:
 		""
 	)
 
+	# for
+	for i in 12...15:
+		trace("for: ", i);
+
+	# loop
+	mut a = "";
+	loop:
+		a += "a";
+		if a.length == 3:
+			break;
+	trace(a);
+
 	# while
 	mut i = 1;
 	while i <= 3:
-		trace(i++);
+		trace("while: ", i++);
+	
+	# pass(?)
+	if true:
+		pass;
+	if false:
+	trace("printing underneath empty if");
 
 	# tuples
 	var t: (int, int, int) = (1, 2, 3);
@@ -86,8 +104,8 @@ def main:
 # args and return types
 def doMath(a: int, b: int) -> int:
 	# return 
-	return a + b
+	return a + b;
 
 # inline function
-def anotherFunction() = trace("calling from another function")
+def anotherFunction() = trace("calling from another function");
 

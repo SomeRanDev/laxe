@@ -478,6 +478,8 @@ class Parser {
 			};
 		}
 
+
+		trace(haxe.CallStack.toString(haxe.CallStack.callStack()));
 		error("Expected :", herePosition());
 		return nullExpr();
 	}
