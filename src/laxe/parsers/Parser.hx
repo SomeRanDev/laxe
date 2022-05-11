@@ -442,7 +442,9 @@ class Parser {
 					blockIdent = lineIndent;
 				}
 			} else {
-				error("Expected new line", herePosition());
+				final expr = parseNextExpression();
+				findAndParseNextContent(";");
+				return expr;
 			}
 
 			var endIndex = startIndex;

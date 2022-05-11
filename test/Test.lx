@@ -61,6 +61,23 @@ def main:
 		""
 	)
 
+	# random
+	let ifValue = if Math.random() < 0.33: "one";
+	elif Math.random() < 0.5: "two";
+	else: "three";
+
+	trace("randomly generated: " + ifValue);
+
+	# switch
+	let s = 123;
+	switch s:
+		case 1 | 3 | 5:
+			trace("1");
+		case 123 if false:
+			trace("Found 123 from switch!!");
+		case _:
+			trace("default case on switch");
+
 	# for
 	for i in 12...15:
 		trace("for: ", i);
@@ -83,6 +100,14 @@ def main:
 		pass;
 	if false:
 	trace("printing underneath empty if");
+
+	# try catch throw
+	try:
+		throw "test error";
+	catch(e: str):
+		trace("printing string error: " + e);
+	catch:
+		trace(e);
 
 	# tuples
 	var t: (int, int, int) = (1, 2, 3);
@@ -107,5 +132,5 @@ def doMath(a: int, b: int) -> int:
 	return a + b;
 
 # inline function
-def anotherFunction() = trace("calling from another function");
+def anotherFunction(): trace("calling from another function");
 

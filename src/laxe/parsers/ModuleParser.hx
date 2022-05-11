@@ -37,7 +37,7 @@ class ModuleParser {
 			if(lastIndex != parser.getIndex()) {
 				lastIndex = parser.getIndex();
 			} else {
-				parser.error("Unexpected content", parser.herePosition());
+				parser.errorHere("Unexpected content at module-level");
 				break;
 			}
 

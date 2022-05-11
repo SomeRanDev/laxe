@@ -205,10 +205,10 @@ class ExpressionParser {
 					var found = false;
 					if(p.getIndent() == ifIndent) {
 						final elseStartIndex = p.getIndex();
-						final elseKey = p.tryParseIdent("else");
+						final elseKey = p.tryParseOneIdent("else", "elif");
 						if(elseKey != null) {
 							p.parseWhitespaceOrComments();
-							final elseIfKey = p.tryParseIdent("if");
+							final elseIfKey = elseKey.ident == "elif" ? elseKey : p.tryParseIdent("if");
 							if(elseIfKey != null) {
 								final eicond = expr(p);
 								final block = p.parseBlock();
@@ -291,6 +291,131 @@ class ExpressionParser {
 				return {
 					expr: EWhile(cond, block, true),
 					pos: p.mergePos(whileKey.pos, block.pos)
+				};
+			}
+		}
+
+		// ***************************************
+		// * Switch expression
+		// ***************************************
+		{
+			final switchKey = p.tryParseIdent("switch");
+			if(switchKey != null) {
+				final cond = expr(p);
+				var caseIdent = null;
+
+				final cases = [];
+
+				if(p.findAndParseNextContent(":")) {
+					while(true) {
+						if(p.ended) {
+							p.errorHere("Unexpected end of file");
+							break;
+						}
+
+						p.parseWhitespaceOrComments();
+						if(caseIdent == null) {
+							caseIdent = p.getIndent();
+						}
+
+						if(p.tryParseIdent("case") != null) {
+							if(p.getIndent() == caseIdent) {
+								final values = [expr(p)];
+								while(true) {
+									if(p.findAndParseNextContent("|")) {
+										values.push(expr(p));
+									} else {
+										break;
+									}
+								}
+
+								final guard = if(p.tryParseIdent("if") != null) {
+									expr(p);
+								} else {
+									null;
+								}
+
+								final expr = p.parseBlock();
+
+								cases.push({
+									values: values,
+									guard: guard,
+									expr: expr
+								});
+							} else {
+								p.errorHere("Inconsistent indentation");
+								break;
+							}
+						} else {
+							break;
+						}
+					}
+				}
+
+				return {
+					expr: ESwitch(cond, cases, null),
+					pos: p.makePosition(startIndex)
+				};
+			}
+		}
+
+		// ***************************************
+		// * Try expression
+		// ***************************************
+		{
+			final tryKey = p.tryParseIdent("try");
+			final tryIdent = p.getIndent();
+			if(tryKey != null) {
+				final block = p.parseBlock();
+				final catches = [];
+				
+				while(!p.ended) {
+					final state = p.saveParserState();
+					p.parseWhitespaceOrComments();
+
+					var found = false;
+					if(p.getIndent() == tryIdent) {
+						final catchStartIndex = p.getIndex();
+						final catchKey = p.tryParseIdent("catch");
+						if(catchKey != null) {
+							var varName = null;
+							var type = null;
+							if(p.findAndParseNextContent("(")) {
+								varName = p.parseNextIdent().ident;
+								type = if(p.findAndParseNextContent(":")) {
+									p.parseNextType();
+								} else {
+									null;
+								}
+								if(!p.findAndParseNextContent(")")) {
+									p.errorHere("Expected ')'");
+								}
+							} else {
+								varName = "e";
+							}
+
+							final expr = p.parseBlock();
+
+							catches.push({
+								name: varName,
+								expr: expr,
+								type: type
+							});
+							found = true;
+						} else {
+							break;
+						}
+					}
+
+					if(!found) {
+						p.restoreParserState(state);
+						break;
+					}
+				}
+
+				return {
+					expr: ETry(block, catches),
+					pos: p.mergePos(tryKey.pos, block.pos)
 				};
 			}
 		}
