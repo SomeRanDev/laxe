@@ -148,15 +148,14 @@ class ExpressionParser {
 			if(varIdent != null) {
 				final varName = p.parseNextIdent();
 				if(varName != null) {
-					p.parseWhitespaceOrComments();
-
-					if(p.checkAhead(":")) {
+					final type = if(p.findAndCheckAhead(":")) {
 						p.incrementIndex(1);
-
-						// TODO: parse type
+						p.parseNextType();
+					} else {
+						null;
 					}
 
-					final e = if(p.checkAhead("=")) {
+					final e = if(p.findAndCheckAhead("=")) {
 						p.incrementIndex(1);
 						expr(p);
 					} else {
@@ -167,6 +166,7 @@ class ExpressionParser {
 					return {
 						expr: EVars([
 							{
+								type: type,
 								name: varName.ident,
 								expr: e,
 								isFinal: varIdent.ident == "let"

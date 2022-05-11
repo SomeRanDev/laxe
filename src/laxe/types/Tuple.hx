@@ -12,24 +12,33 @@ class Tuple {
 	static var emptyPosition: Null<Position> = null;
 	static var tuplesCreated = [];
 
-	public static function makeTupleExpr(params: Array<Expr>, pos: Position): Expr {
+	static function ensureEmptyPosition() {
 		if(emptyPosition == null) {
 			emptyPosition = Context.makePosition({ min: 0, max: 0, file: "" });
 		}
+	}
 
-		if(params.length < minElements || params.length > maxElements) {
+	public static function ensure(size: Int) {
+		ensureEmptyPosition();
+		if(registerTuple(size)) {
+			createTypeDefinition(size);
+		}
+	}
+
+	public static function makeTupleExpr(params: Array<Expr>, pos: Position): Expr {
+		final paramsLength = params.length;
+
+		if(paramsLength < minElements || paramsLength > maxElements) {
 			return { expr: EConst(CIdent("null")), pos: pos };
 		}
 
-		if(registerTuple(params.length)) {
-			createTypeDefinition(params);
-		}
+		ensure(paramsLength);
 
 		final result = {
 			expr: ENew({
 				pack: ["laxe"],
 				name: "Tuple",
-				sub: "Tuple" + params.length
+				sub: "Tuple" + paramsLength
 			}, params),
 			pos: pos
 		};
@@ -48,10 +57,8 @@ class Tuple {
 		return true;
 	}
 
-	static function createTypeDefinition(params: Array<Expr>) {
+	static function createTypeDefinition(paramCount: Int) {
 		final typeParams = [];
-
-		final paramCount = params.length;
 
 		final fields = [];
 
@@ -178,8 +185,9 @@ class Tuple {
 			],
 			isExtern: false,
 			fields: fields,
-			kind: TDClass(null, [], false, false, false)
+			kind: TDClass(null, null, false, false, false)
 		});
+
 
 		Context.defineModule("laxe.Tuple", typeDefinitions);
 	}

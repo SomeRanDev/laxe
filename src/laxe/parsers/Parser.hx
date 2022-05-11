@@ -17,6 +17,7 @@ class ParserState {
 
 	var lineStartIndex: Int;
 	var lineIndent: String;
+	var lastParsedWhitespaceIndex: Int;
 	var touchedContentOnThisLine: Bool;
 
 	public function new(parser: Parser) {
@@ -27,6 +28,7 @@ class ParserState {
 		@:privateAccess {
 			lineStartIndex = parser.lineStartIndex;
 			lineIndent = parser.lineIndent;
+			lastParsedWhitespaceIndex = parser.lastParsedWhitespaceIndex;
 			touchedContentOnThisLine = parser.touchedContentOnThisLine;
 		}
 	}
@@ -44,6 +46,7 @@ class Parser {
 
 	var lineStartIndex: Int = 0;
 	var lineIndent: String = "";
+	var lastParsedWhitespaceIndex: Int = -1;
 	var touchedContentOnThisLine: Bool = false;
 
 	// constructor
@@ -70,6 +73,7 @@ class Parser {
 		@:privateAccess {
 			lineStartIndex = state.lineStartIndex;
 			lineIndent = state.lineIndent;
+			lastParsedWhitespaceIndex = state.lastParsedWhitespaceIndex;
 			touchedContentOnThisLine = state.touchedContentOnThisLine;
 		}
 	}
@@ -116,6 +120,10 @@ class Parser {
 	// error report
 	public function error(msg: String, pos: Position) {
 		Context.fatalError(msg, pos);
+	}
+
+	public function errorHere(msg: String) {
+		error(msg, herePosition());
 	}
 
 	public function warn(msg: String, pos: Position) {
@@ -167,6 +175,11 @@ class Parser {
 		return true;
 	}
 
+	public function findAndCheckAhead(check: String): Bool {
+		parseWhitespaceOrComments();
+		return checkAhead(check);
+	}
+
 	public function parseNextContent(content: String): Bool {
 		if(checkAhead(content)) {
 			incrementIndex(content.length);
@@ -177,6 +190,9 @@ class Parser {
 
 	// white-space/comments
 	public function parseWhitespaceOrComments(untilNewline: Bool = false): Bool {
+		if(lastParsedWhitespaceIndex == index) {
+			return false;
+		}
 		final start = index;
 		while(index < content.length) {
 			final preParseIndex = index;
@@ -190,6 +206,7 @@ class Parser {
 				break;
 			}
 		}
+		lastParsedWhitespaceIndex = index;
 		return start != index;
 	}
 
@@ -372,6 +389,11 @@ class Parser {
 		return valueParser.parseValueExpr();
 	}
 
+	// type
+	public function parseNextType(): Null<ComplexType> {
+		return TypeParser.parseType(this);
+	}
+
 	// basic expr
 	public function parseNextExpression(): Null<Expr> {
 		return ExpressionParser.expr(this);
@@ -380,16 +402,14 @@ class Parser {
 	public function parseNextExpressionList(endChar: String): Array<Expr> {
 		final exprs = [];
 		while(!ended) {
-			parseWhitespaceOrComments();
-			if(checkAhead(endChar)) {
+			if(findAndCheckAhead(endChar)) {
 				incrementIndex(endChar.length);
 				break;
 			} else {
 				exprs.push(parseNextExpression());
-				parseWhitespaceOrComments();
-				if(checkAhead(",")) {
+				if(findAndCheckAhead(",")) {
 					incrementIndex(1);
-				} else if(checkAhead(endChar)) {
+				} else if(findAndCheckAhead(endChar)) {
 					incrementIndex(endChar.length);
 					break;
 				} else {
