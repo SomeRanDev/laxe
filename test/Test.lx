@@ -6,7 +6,7 @@ line
 comment
 ###
 
-def main():
+def main:
 	# semi-colon test
 	trace("Hello Laxe!"); trace("Helo Laxe2");
 
@@ -80,5 +80,14 @@ def main():
 	# call haxe function
 	HaxeTest.helloFromHaxe();
 
+	# test arguments and return
+	trace(doMath(123, 321));
+
+# args and return types
+def doMath(a: int, b: int) -> int:
+	# return 
+	return a + b
+
+# inline function
 def anotherFunction() = trace("calling from another function")
 

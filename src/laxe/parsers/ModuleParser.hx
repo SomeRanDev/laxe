@@ -62,34 +62,40 @@ class ModuleParser {
 
 	function parseFunction(p: Parser) {
 		final startIndex = p.getIndex();
+		final access = p.parseAllAccessWithPublic();
 		final def = p.tryParseIdent("def");
 		if(def != null) {
-			p.parseWhitespaceOrComments();
 			final name = p.parseNextIdent();
-			p.parseWhitespaceOrComments();
-			if(p.checkAhead("()")) {
-				p.incrementIndex(2);
-				p.parseWhitespaceOrComments();
-				final expr = if(p.checkAhead(":")) {
-					p.parseBlock();
-				} else if(p.checkAhead("=")) {
-					p.incrementIndex(1);
-					p.parseWhitespaceOrComments();
-					p.parseNextExpression();
-				} else {
-					null;
-				}
-				types.push({
-					pos: p.makePosition(startIndex),
-					pack: [],
-					name: name.ident,
-					kind: TDField(FFun({
-						args: [],
-						expr: expr
-					}), []),
-					fields: []
-				});
+
+			var args = p.parseNextFunctionArgs();
+			if(args == null) args = [];
+
+			final retType = if(p.findAndParseNextContent("->")) {
+				p.parseNextType();
+			} else {
+				null;
 			}
+
+			final expr = if(p.findAndCheckAhead(":")) {
+				p.parseBlock();
+			} else if(p.findAndParseNextContent("=")) {
+				p.parseWhitespaceOrComments();
+				p.parseNextExpression();
+			} else {
+				null;
+			}
+
+			types.push({
+				pos: p.makePosition(startIndex),
+				pack: [],
+				name: name.ident,
+				kind: TDField(FFun({
+					args: args,
+					ret: retType,
+					expr: expr
+				}), access),
+				fields: []
+			});
 		}
 	}
 }

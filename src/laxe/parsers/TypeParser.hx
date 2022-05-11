@@ -11,8 +11,7 @@ class TypeParser {
 		p.parseWhitespaceOrComments();
 		final startIndex = p.getIndex();
 
-		if(p.checkAhead("(")) {
-			p.incrementIndex(1);
+		if(p.findAndParseNextContent("(")) {
 			final typeList = parseTypeList(p, ")");
 
 			final returnType = if(p.findAndCheckAhead("->")) {

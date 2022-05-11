@@ -126,8 +126,7 @@ class ExpressionParser {
 		// ***************************************
 		// * Parenthesis and Tuple
 		// ***************************************
-		if(p.checkAhead("(")) {
-			p.incrementIndex(1);
+		if(p.parseNextContent("(")) {
 			final exprs = p.parseNextExpressionList(")");
 			final pos = p.makePosition(startIndex);
 			if(exprs.length == 1) {
@@ -148,15 +147,13 @@ class ExpressionParser {
 			if(varIdent != null) {
 				final varName = p.parseNextIdent();
 				if(varName != null) {
-					final type = if(p.findAndCheckAhead(":")) {
-						p.incrementIndex(1);
+					final type = if(p.findAndParseNextContent(":")) {
 						p.parseNextType();
 					} else {
 						null;
 					}
 
-					final e = if(p.findAndCheckAhead("=")) {
-						p.incrementIndex(1);
+					final e = if(p.findAndParseNextContent("=")) {
 						expr(p);
 					} else {
 						null;
@@ -271,6 +268,20 @@ class ExpressionParser {
 		}
 
 		// ***************************************
+		// * Return expression
+		// ***************************************
+		{
+			final returnKey = p.tryParseIdent("return");
+			if(returnKey != null) {
+				final e = maybeExpr(p);
+				return {
+					expr: EReturn(e),
+					pos: p.mergePos(returnKey.pos, e.pos)
+				};
+			}
+		}
+
+		// ***************************************
 		// * Value (Ident, Int, Float, String, Array, Struture, etc.)
 		// ***************************************
 		final value = p.parseNextValue();
@@ -337,8 +348,7 @@ class ExpressionParser {
 		// ***************************************
 		// * Call Operator
 		// ***************************************
-		if(p.checkAhead("(")) {
-			p.incrementIndex(1);
+		if(p.parseNextContent("(")) {
 			final exprs = p.parseNextExpressionList(")");
 			final pos = p.makePosition(startIndex);
 			return post_expr(p, {

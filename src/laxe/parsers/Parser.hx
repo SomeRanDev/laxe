@@ -188,6 +188,11 @@ class Parser {
 		return false;
 	}
 
+	public function findAndParseNextContent(content: String): Bool {
+		parseWhitespaceOrComments();
+		return parseNextContent(content);
+	}
+
 	// white-space/comments
 	public function parseWhitespaceOrComments(untilNewline: Bool = false): Bool {
 		if(lastParsedWhitespaceIndex == index) {
@@ -407,10 +412,9 @@ class Parser {
 				break;
 			} else {
 				exprs.push(parseNextExpression());
-				if(findAndCheckAhead(",")) {
-					incrementIndex(1);
-				} else if(findAndCheckAhead(endChar)) {
-					incrementIndex(endChar.length);
+				if(findAndParseNextContent(",")) {
+					continue;
+				} else if(findAndParseNextContent(endChar)) {
 					break;
 				} else {
 					error("Unexpected content", herePosition());
@@ -455,8 +459,7 @@ class Parser {
 						} else {
 							break;
 						}
-					} else if(checkAhead(";")) {
-						incrementIndex(1);
+					} else if(parseNextContent(";")) {
 						parseWhitespaceOrComments();
 						if(lastLineNumber == lineNumber) {
 							exprs.push(parseNextExpression());
@@ -477,6 +480,86 @@ class Parser {
 
 		error("Expected :", herePosition());
 		return nullExpr();
+	}
+
+	// function params
+	public function parseNextFunctionArgs(): Null<Array<FunctionArg>> {
+		if(findAndParseNextContent("(")) {
+			final params: Array<FunctionArg> = [];
+
+			if(!findAndParseNextContent(")")) {
+				while(!ended) {
+					final ident = parseNextIdent();
+					if(ident == null) {
+						errorHere("Expected identifier");
+						break;
+					}
+
+					final type = if(findAndParseNextContent(":")) {
+						parseNextType();
+					} else {
+						null;
+					}
+					
+					final expr = if(findAndParseNextContent("=")) {
+						parseNextExpression();
+					} else {
+						null;
+					}
+
+					// TODO: Meta
+					
+					params.push({
+						name: ident.ident,
+						type: type,
+						value: expr
+					});
+					
+					if(findAndParseNextContent(")")) {
+						break;
+					} else if(findAndParseNextContent(",")) {
+						continue;
+					} else {
+						errorHere("Expected ')' or ','");
+						break;
+					}
+				}
+			}
+			
+			return params;
+		}
+		return null;
+	}
+
+	// props
+	public function parseAllAccess(): Array<Access> {
+		final accessorNames = tryParseMultiIdent("pub", "priv", "static", "override", "dyn",
+			"inline", "macro", "final", "extern", "abstract", "overload");
+
+		return accessorNames.map(a -> {
+			return switch(a.ident) {
+				case "pub": APublic;
+				case "priv": APrivate;
+				case "static": AStatic;
+				case "override": AOverride;
+				case "dyn": ADynamic;
+				case "inline": AInline;
+				case "macro": AMacro;
+				case "final": AFinal;
+				case "extern": AExtern;
+				case "abstract": AAbstract;
+				case "overload": AOverload;
+				case _: null;
+			}
+		});
+	}
+
+	public function parseAllAccessWithPublic(): Array<Access> {
+		final accessors = parseAllAccess();
+		if(!accessors.contains(APrivate) && !accessors.contains(APublic)) {
+			accessors.push(APublic);
+		}
+		return accessors;
 	}
 }
 
