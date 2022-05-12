@@ -300,9 +300,10 @@ class ExpressionParser {
 		// ***************************************
 		{
 			final switchKey = p.tryParseIdent("switch");
+			final switchIndent = p.getIndent();
 			if(switchKey != null) {
 				final cond = expr(p);
-				var caseIdent = null;
+				var caseIndent = null;
 
 				final cases = [];
 
@@ -314,12 +315,16 @@ class ExpressionParser {
 						}
 
 						p.parseWhitespaceOrComments();
-						if(caseIdent == null) {
-							caseIdent = p.getIndent();
+						if(caseIndent == null) {
+							caseIndent = p.getIndent();
+							if(!StringTools.startsWith(caseIndent, switchIndent)) {
+								p.errorHere("Inconsistent indentation");
+								break;
+							}
 						}
 
 						if(p.tryParseIdent("case") != null) {
-							if(p.getIndent() == caseIdent) {
+							if(p.getIndent() == caseIndent) {
 								final values = [expr(p)];
 								while(true) {
 									if(p.findAndParseNextContent("|")) {
@@ -480,6 +485,17 @@ class ExpressionParser {
 			}
 		}
 
+		{
+			final newKey = p.tryParseIdent("new");
+			if(newKey != null) {
+				final type = p.parseNextTypePath();
+				return post_expr(p, {
+					expr: ENew(type, []),
+					pos: p.makePosition(startIndex)
+				});
+			}
+		}
+
 		// ***************************************
 		// * Value (Ident, Int, Float, String, Array, Struture, etc.)
 		// ***************************************
@@ -560,6 +576,20 @@ class ExpressionParser {
 		if(p.parseNextContent("(")) {
 			final exprs = p.parseNextExpressionList(")");
 			final pos = p.makePosition(startIndex);
+
+			switch(e.expr) {
+				case ENew(t, params): {
+					return post_expr(p, {
+						expr: EParenthesis({
+							expr: ENew(t, params.concat(exprs)),
+							pos: e.pos
+						}),
+						pos: pos
+					});
+				}
+				case _:
+			}
+
 			return post_expr(p, {
 				expr: ECall(e, exprs),
 				pos: pos

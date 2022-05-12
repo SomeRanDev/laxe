@@ -108,8 +108,7 @@ class TypeParser {
 		}
 
 		var params = null;
-		if(p.findAndCheckAhead("<")) {
-			p.incrementIndex(1);
+		if(p.findAndParseNextContent("<")) {
 			final typeList = parseTypeList(p, ">");
 			params = typeList.map(t -> TPType(t));
 		}

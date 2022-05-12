@@ -6,6 +6,8 @@ line
 comment
 ###
 
+mut globalVariable = "this is global";
+
 def main:
 	# semi-colon test
 	trace("Hello Laxe!"); trace("Helo Laxe2");
@@ -66,7 +68,7 @@ def main:
 	elif Math.random() < 0.5: "two";
 	else: "three";
 
-	trace("randomly generated: " + ifValue);
+	trace('randomly generated: $ifValue');
 
 	# switch
 	let s = 123;
@@ -80,7 +82,7 @@ def main:
 
 	# for
 	for i in 12...15:
-		trace("for: ", i);
+		trace('for: $i');
 
 	# loop
 	mut a = "";
@@ -93,19 +95,20 @@ def main:
 	# while
 	mut i = 1;
 	while i <= 3:
-		trace("while: ", i++);
+		trace('while: ${i++}');
 	
 	# pass(?)
 	if true:
 		pass;
 	if false:
+		pass
 	trace("printing underneath empty if");
 
 	# try catch throw
 	try:
 		throw "test error";
 	catch(e: str):
-		trace("printing string error: " + e);
+		trace('printing string error: $e');
 	catch:
 		trace(e);
 
@@ -117,6 +120,10 @@ def main:
 	# another function
 	anotherFunction();
 
+	# global variable
+	globalVariable += "!!!";
+	trace(globalVariable);
+
 	# multi-file
 	sub.Another.helloFromLaxe();
 
@@ -126,6 +133,15 @@ def main:
 	# test arguments and return
 	trace(doMath(123, 321));
 
+	# create class
+	mut cls = new ClassTest();
+	cls.hello();
+
+	# create generic class
+	new GenericClass<int>(123);
+	new GenericClass(100);
+	new GenericClass("Hello from generic class!");
+
 # args and return types
 def doMath(a: int, b: int) -> int:
 	# return 
@@ -133,4 +149,14 @@ def doMath(a: int, b: int) -> int:
 
 # inline function
 def anotherFunction(): trace("calling from another function");
+
+class ClassTest:
+	def new: trace("Created ClassTest!");
+	def hello -> str: 
+		trace("Hello from ClassTest!");
+		return "test";
+
+class GenericClass<T>:
+	def new(value: T):
+		trace('The generic value is $value');
 

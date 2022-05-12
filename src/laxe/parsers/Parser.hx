@@ -388,6 +388,21 @@ class Parser {
 		return result;
 	}
 
+	public function tryParseMultiIdentOneEach(...idents: String): Array<StringAndPos> {
+		final result = [];
+		for(ident in idents) {
+			final ident = tryParseIdent(ident);
+			if(ident != null) {
+				if(result.contains(ident)) {
+					error("Unexpected identifier", ident.pos);
+				} else {
+					result.push(ident);
+				}
+			}
+		}
+		return result;
+	}
+
 	// value
 	public function parseNextValue(): Null<Expr> {
 		final valueParser = new ValueParser(this);
@@ -397,6 +412,22 @@ class Parser {
 	// type
 	public function parseNextType(): Null<ComplexType> {
 		return TypeParser.parseType(this);
+	}
+
+	public function parseNextTypePath(): Null<TypePath> {
+		parseWhitespaceOrComments();
+		final startIndex = getIndex();
+		final result = parseNextType();
+		if(result == null) {
+			return null;
+		}
+		return switch(result) {
+			case TPath(path): return path;
+			case _: {
+				error("Invalid type parsed", makePosition(startIndex));
+				null;
+			}
+		}
 	}
 
 	// basic expr
@@ -440,6 +471,8 @@ class Parser {
 			if(lastLineNumber != lineNumber) {
 				if(lineIndent.length > parentLineIdent.length && StringTools.startsWith(lineIndent, parentLineIdent)) {
 					blockIdent = lineIndent;
+				} else {
+					errorHere("Inconsistent indentation");
 				}
 			} else {
 				final expr = parseNextExpression();
@@ -537,7 +570,7 @@ class Parser {
 
 	// props
 	public function parseAllAccess(): Array<Access> {
-		final accessorNames = tryParseMultiIdent("pub", "priv", "static", "override", "dyn",
+		final accessorNames = tryParseMultiIdentOneEach("pub", "priv", "static", "override", "dyn",
 			"inline", "macro", "final", "extern", "abstract", "overload");
 
 		return accessorNames.map(a -> {
@@ -564,6 +597,65 @@ class Parser {
 			accessors.push(APublic);
 		}
 		return accessors;
+	}
+
+	// type params
+	public function parseTypeParamDecls(): Null<Array<TypeParamDecl>> {
+		if(findAndParseNextContent("<")) {
+			final params: Array<TypeParamDecl> = [];
+			
+			while(true) {
+				if(ended) {
+					errorHere("Unexpected end of file");
+					break;
+				}
+
+				// TODO meta
+
+				final ident = parseNextIdent();
+				final typeParams = parseTypeParamDecls();
+
+				var constraints = null;
+				if(findAndParseNextContent(":")) {
+					constraints = [];
+					final firstType = parseNextType();
+					if(firstType == null) {
+						errorHere("Expected type constraint");
+						break;
+					} else {
+						constraints.push(firstType);
+					}
+
+					while(findAndParseNextContent("&")) {
+						final type = parseNextType();
+						if(type == null) {
+							errorHere("Expected type constraint");
+							break;
+						} else {
+							constraints.push(type);
+						}
+					}
+				}
+
+				params.push({
+					name: ident.ident,
+					params: typeParams,
+					constraints: constraints
+				});
+
+				if(findAndParseNextContent(",")) {
+					continue;
+				} else if(findAndParseNextContent(">")) {
+					break;
+				} else {
+					errorHere("Expected '>' or ','");
+					break;
+				}
+			}
+
+			return params;
+		}
+		return null;
 	}
 }
 
