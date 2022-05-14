@@ -234,6 +234,15 @@ class ValueParser {
 
 	public function parseNextIdentifier(): Null<Expr> {
 		final result = parser.parseNextIdent();
+
+		if(result != null && result.ident == "expr") {
+			final e = macro laxe.ast.ExprEx;
+			return {
+				expr: e.expr,
+				pos: result.pos
+			};
+		}
+
 		return result == null ? null : {
 			expr: EConst(CIdent(result.ident)),
 			pos: result.pos

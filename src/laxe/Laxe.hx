@@ -4,7 +4,6 @@ package laxe;
 
 import laxe.parsers.ModuleParser;
 
-import haxe.macro.Compiler;
 import haxe.macro.Context;
 
 import sys.FileSystem;
@@ -12,6 +11,7 @@ import sys.FileSystem;
 import haxe.io.Path;
 
 var ClassPaths = [];
+var Modules: Array<ModuleParser> = [];
 
 final LaxePathExtension = "lx";
 
@@ -35,6 +35,7 @@ function Start() {
 	for(p in paths) {
 		LoadFiles(FileSystem.readDirectory(p), p);
 	}
+	Compile();
 }
 
 @:nullSafety(Strict)
@@ -53,7 +54,20 @@ function LoadFiles(files: Array<String>, directoryString: String) {
 @:nullSafety(Strict)
 function LoadFile(f: String, p: Path) {
 	final m = new ModuleParser(f, p);
-	m.defineModule();
+	Modules.push(m);
+}
+
+macro function bla() {
+	final a = macro 1 + 2;
+	return macro $a;
+}
+
+@:nullSafety(Strict)
+function Compile() {
+	for(m in Modules) {
+		m.applyMeta();
+		m.defineModule();
+	}
 }
 
 #end

@@ -8,6 +8,7 @@ comment
 
 mut globalVariable = "this is global";
 
+@[test](123)
 def main:
 	# semi-colon test
 	trace("Hello Laxe!"); trace("Helo Laxe2");
@@ -142,6 +143,13 @@ def main:
 	new GenericClass(100);
 	new GenericClass("Hello from generic class!");
 
+	# metadata
+	let rtti = haxe.rtti.Rtti.getRtti(ClassTest);
+	trace(rtti.meta);
+
+	# test decor
+	trace(@Thing 0);
+
 # args and return types
 def doMath(a: int, b: int) -> int:
 	# return 
@@ -150,13 +158,22 @@ def doMath(a: int, b: int) -> int:
 # inline function
 def anotherFunction(): trace("calling from another function");
 
+# normal class
+@[:rtti]
+@[this is meta](1, 2, 3)
+@laxe.test(123)
 class ClassTest:
 	def new: trace("Created ClassTest!");
 	def hello -> str: 
 		trace("Hello from ClassTest!");
 		return "test";
 
+# generic class
 class GenericClass<T>:
 	def new(value: T):
 		trace('The generic value is $value');
 
+decor Thing:
+	def onExpr(e: expr) -> expr:
+		e.traceSelf();
+		return expr.fromString("1 + 2 + 3");

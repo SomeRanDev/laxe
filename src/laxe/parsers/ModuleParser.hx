@@ -9,6 +9,11 @@ import haxe.io.Path;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 
+import laxe.ast.Decor;
+import laxe.ast.DecorManager;
+
+import laxe.parsers.Parser;
+
 @:nullSafety(Strict)
 enum LaxeModuleMember {
 	Variable(name: String, pos: Position, meta: Array<MetadataEntry>, type: FieldType, access: Array<Access>);
@@ -23,6 +28,12 @@ class ModuleParser {
 	var imports: Null<Array<ImportExpr>>;
 	var usings: Null<Array<TypePath>>;
 
+	var p: Parser;
+	var decorManager: DecorManager;
+
+	var members: Array<{ member: LaxeModuleMember, metadata: Parser.Metadata }>;
+	var decors: Array<Decor>;
+
 	public function new(filePath: String, path: Path) {
 		modulePath = generateModulePath(path);
 		types = [];
@@ -31,42 +42,72 @@ class ModuleParser {
 
 		final content = File.getContent(filePath);
 
-		final parser = new Parser(content, filePath);
+		decorManager = new DecorManager();
 
+		p = new Parser(content, filePath, this);
+		members = [];
+		decors = [];
+
+		parseModule();
+	}
+
+	public function addDecorPointer(d: DecorPointer) {
+		decorManager.addPointer(d);
+	}
+
+	function parseModule() {
 		var lastIndex = null;
 
-		while(!parser.ended) {
-			parser.parseWhitespaceOrComments();
+		while(!p.ended) {
+			p.parseWhitespaceOrComments();
 
-			if(lastIndex != parser.getIndex()) {
-				lastIndex = parser.getIndex();
+			if(lastIndex != p.getIndex()) {
+				lastIndex = p.getIndex();
 			} else {
-				parser.errorHere("Unexpected content at module-level");
+				p.errorHere("Unexpected content at module-level");
 				break;
 			}
 
-			{
-				final member = parseFunctionOrVariable(parser);
-				if(member != null) addMemberToTypes(member);
+			final metadata = p.parseAllNextDecors();
+
+			if(parseDecor(metadata)) {
+				continue;
 			}
 
 			{
-				final member = parseClass(parser);
-				if(member != null) addMemberToTypes(member);
+				final member = parseFunctionOrVariable();
+				if(member != null) {
+					members.push({ member: member, metadata: metadata });
+					continue;
+				}
+			}
+
+			{
+				final member = parseClass();
+				if(member != null) {
+					members.push({ member: member, metadata: metadata });
+					continue;
+				}
 			}
 		}
-
-		trace("Done");
 	}
 
-	function addMemberToTypes(member: LaxeModuleMember) {
+	public function applyMeta() {
+		decorManager.ApplyDecors();
+
+		for(m in members) {
+			addMemberToTypes(m.member, m.metadata);
+		}
+	}
+
+	function addMemberToTypes(member: LaxeModuleMember, metadata: Parser.Metadata) {
 		switch(member) {
 			case Variable(name, pos, meta, type, access): {
 				types.push({
 					pos: pos,
 					pack: [],
 					name: name,
-					meta: meta,
+					meta: metadata.string != null ? meta.concat(metadata.string) : meta,
 					kind: TDField(type, access),
 					fields: []
 				});
@@ -76,7 +117,7 @@ class ModuleParser {
 					pos: pos,
 					pack: [],
 					name: name,
-					meta: meta,
+					meta: metadata.string != null ? meta.concat(metadata.string) : meta,
 					kind: TDField((type), access),
 					fields: []
 				});
@@ -86,7 +127,7 @@ class ModuleParser {
 					pos: pos,
 					pack: [],
 					name: name,
-					meta: meta,
+					meta: metadata.string != null ? meta.concat(metadata.string) : meta,
 					params: params,
 					kind: kind,
 					fields: fields
@@ -118,7 +159,77 @@ class ModuleParser {
 		Context.defineModule(modulePath, types, imports, usings);
 	}
 
-	function parseFunctionOrVariable(p: Parser): Null<LaxeModuleMember> {
+	// ========================================
+	// * Parsing
+	// ========================================
+
+	function parseClassFields(startIndent: String, classTypeName: String = "class"): Array<Field> {
+		final fields = [];
+
+		if(p.findAndParseNextContent(";")) {
+		} else if(p.findAndParseNextContent(":")) {
+			final currentLine = p.lineNumber;
+			p.parseWhitespaceOrComments();
+
+			var classIndent = null;
+			if(currentLine != p.lineNumber) {
+				classIndent = p.getIndent();
+				if(!StringTools.startsWith(classIndent, startIndent)) {
+					p.errorHere("Inconsistent indentation");
+					classIndent = null;
+				}
+			} else {
+				p.errorHere('Unexpected content on same line after $classTypeName :');
+			}
+
+			if(classIndent != null) {
+				while(classIndent == p.getIndent()) {
+					final mem = parseFunctionOrVariable();
+					if(mem != null) {
+						final field = convertModuleMemberToField(mem);
+						if(field != null) {
+							fields.push(field);
+						} else {
+							p.error('Unexpected member in $classTypeName body', getPositionFromMember(mem));
+							break;
+						}
+					} else {
+						p.errorHere("Expected field or function");
+						break;
+					}
+					p.parseWhitespaceOrComments();
+				}
+			}
+		}
+
+		return fields;
+	}
+
+	static function convertModuleMemberToField(m: LaxeModuleMember): Null<Field> {
+		return switch(m) {
+			case Variable(name, pos, meta, type, access): {
+				{
+					name: name,
+					pos: pos,
+					meta: meta,
+					kind: type,
+					access: access
+				};
+			}
+			case Function(name, pos, meta, type, access): {
+				{
+					name: name,
+					pos: pos,
+					meta: meta,
+					kind: type,
+					access: access
+				};
+			}
+			case _: null;
+		}
+	}
+
+	function parseFunctionOrVariable(): Null<LaxeModuleMember> {
 		final state = p.saveParserState();
 		final startIndex = p.getIndex();
 		final access = p.parseAllAccessWithPublic();
@@ -127,16 +238,16 @@ class ModuleParser {
 		if(ident != null) {
 			final name = ident.ident;
 			if(name == "def") {
-				return parseFunctionAfterDef(p, startIndex, access);
+				return parseFunctionAfterDef(startIndex, access);
 			} else if(name == "var" || name == "let" || name == "mut") {
-				return parseVariableAfterLet(p, ident, startIndex, access);
+				return parseVariableAfterLet(ident, startIndex, access);
 			}
 		}
 		p.restoreParserState(state);
 		return null;
 	}
 
-	function parseFunctionAfterDef(p: Parser, startIndex: Int, access: Array<Access>): Null<LaxeModuleMember> {
+	function parseFunctionAfterDef(startIndex: Int, access: Array<Access>): Null<LaxeModuleMember> {
 		final name = p.parseNextIdent();
 
 		if(name != null) {
@@ -173,7 +284,7 @@ class ModuleParser {
 		return null;
 	}
 
-	function parseVariableAfterLet(p: Parser, varIdent: Parser.StringAndPos, startIndex: Int, access: Array<Access>): Null<LaxeModuleMember> {
+	function parseVariableAfterLet(varIdent: Parser.StringAndPos, startIndex: Int, access: Array<Access>): Null<LaxeModuleMember> {
 		final name = p.parseNextIdent();
 		if(name != null) {
 			final type = if(p.findAndParseNextContent(":")) {
@@ -204,7 +315,7 @@ class ModuleParser {
 		return null;
 	}
 
-	function parseClass(p: Parser): Null<LaxeModuleMember> {
+	function parseClass(): Null<LaxeModuleMember> {
 		final state = p.saveParserState();
 
 		final startIndex = p.getIndex();
@@ -240,46 +351,16 @@ class ModuleParser {
 					}
 				}
 
-				final fields = [];
+				final fields = parseClassFields(startIndent);
 
-				if(p.findAndParseNextContent(";")) {
-				} else if(p.findAndParseNextContent(":")) {
-					final currentLine = p.lineNumber;
-					p.parseWhitespaceOrComments();
-
-					var classIndent = null;
-					if(currentLine != p.lineNumber) {
-						classIndent = p.getIndent();
-						if(!StringTools.startsWith(classIndent, startIndent)) {
-							p.errorHere("Inconsistent indentation");
-							classIndent = null;
-						}
-					} else {
-						p.errorHere("Unexpected content on same line after class :");
-					}
-
-					if(classIndent != null) {
-						while(classIndent == p.getIndent()) {
-							final mem = parseFunctionOrVariable(p);
-							if(mem != null) {
-								final field = convertModuleMemberToField(mem);
-								if(field != null) {
-									fields.push(field);
-								} else {
-									p.error("Unexpected member in class body", getPositionFromMember(mem));
-									break;
-								}
-							} else {
-								p.errorHere("Expected field or function");
-								break;
-							}
-							p.parseWhitespaceOrComments();
-						}
-					}
+				final meta = if(classIdent.ident == "struct") {
+					[ { name: ":struct", pos: classIdent.pos } ];
+				} else {
+					[];
 				}
 				
 				final tdClass = TDClass(superType, interfaces, name.ident == "interface", isFinal, isAbstract);
-				return Class(name.ident, p.makePosition(startIndex), [], params, tdClass, fields);
+				return Class(name.ident, p.makePosition(startIndex), meta, params, tdClass, fields);
 			} else {
 				p.errorHere("Expected class name");
 			}
@@ -290,28 +371,28 @@ class ModuleParser {
 		return null;
 	}
 
-	static function convertModuleMemberToField(m: LaxeModuleMember): Null<Field> {
-		return switch(m) {
-			case Variable(name, pos, meta, type, access): {
-				{
-					name: name,
-					pos: pos,
-					meta: meta,
-					kind: type,
-					access: access
-				};
+	function parseDecor(metadata: Parser.Metadata): Bool {
+		final state = p.saveParserState();
+
+		final startIndex = p.getIndex();
+		final startIndent = p.getIndent();
+
+		final decorIdent = p.tryParseIdent("decor");
+		if(decorIdent != null) {
+			final name = p.parseNextIdent();
+			if(name != null) {
+				final fields = parseClassFields(startIndent, "decor");
+				final d = new Decor(p, name.ident, fields, metadata);
+				decors.push(d);
+				return true;
+			} else {
+				p.errorHere("Expected decor name");
 			}
-			case Function(name, pos, meta, type, access): {
-				{
-					name: name,
-					pos: pos,
-					meta: meta,
-					kind: type,
-					access: access
-				};
-			}
-			case _: null;
+		} else {
+			p.restoreParserState(state);
 		}
+
+		return false;
 	}
 }
 

@@ -6,8 +6,17 @@ import haxe.macro.Context;
 import haxe.macro.Expr;
 
 import laxe.parsers.ValueParser;
+import laxe.parsers.ModuleParser;
+import laxe.ast.DecorManager.DecorPointer;
 
 typedef StringAndPos = { ident: String, pos: Position };
+
+enum LaxeMeta {
+	StringMeta(m: MetadataEntry);
+	TypedMeta(d: DecorPointer);
+}
+
+typedef Metadata = { string: Array<MetadataEntry>, typed: Array<DecorPointer> };
 
 @:nullSafety(Strict)
 class ParserState {
@@ -44,21 +53,39 @@ class Parser {
 	public var ended(default, null): Bool = false;
 	public var lineNumber(default, null): Int = 0;
 
+	var module: ModuleParser;
+
 	var lineStartIndex: Int = 0;
 	var lineIndent: String = "";
 	var lastParsedWhitespaceIndex: Int = -1;
 	var touchedContentOnThisLine: Bool = false;
 
+	var forcedPos: Null<Position> = null;
+
 	// constructor
-	public function new(content: String, filePath: String) {
+	public function new(content: String, filePath: String, module: Null<ModuleParser> = null) {
 		this.content = content;
 		this.filePath = filePath;
+		this.module = module;
+	}
+
+	public static function fromStaticPosition(content: String, pos: Position) {
+		final result = new Parser(content, "");
+		result.forcedPos = pos;
+		return result;
 	}
 
 	// access
 	public function getIndex(): Int { return index; }
 	public function getContent(): String { return content; }
 	public function getIndent(): String { return lineIndent; }
+
+	// decor
+	public function addDecorPointer(d: DecorPointer) {
+		if(module != null) {
+			module.addDecorPointer(d);
+		}
+	}
 
 	// save/restore state
 	public function saveParserState(): ParserState {
@@ -88,14 +115,17 @@ class Parser {
 	}
 
 	public function herePosition() {
+		if(forcedPos != null) return forcedPos;
 		return makePosition(getIndex());
 	}
 
 	public function makePosition(start: Int) {
+		if(forcedPos != null) return forcedPos;
 		return Context.makePosition({ min: start, max: index, file: filePath });
 	}
 
 	public function makePositionExact(start: Int, end: Int) {
+		if(forcedPos != null) return forcedPos;
 		return Context.makePosition({ min: start, max: end, file: filePath });
 	}
 
@@ -496,7 +526,7 @@ class Parser {
 						}
 					} else if(parseNextContent(";")) {
 						parseWhitespaceOrComments();
-						if(lastLineNumber == lineNumber) {
+						if(lastLineNumber == lineNumber && !ended) {
 							exprs.push(parseNextExpression());
 							endIndex = getIndex();
 							parseWhitespaceOrComments();
@@ -513,8 +543,6 @@ class Parser {
 			};
 		}
 
-
-		trace(haxe.CallStack.toString(haxe.CallStack.callStack()));
 		error("Expected :", herePosition());
 		return nullExpr();
 	}
@@ -566,6 +594,77 @@ class Parser {
 			return params;
 		}
 		return null;
+	}
+
+	// metadata and decorators
+	public function parseNextDecor(): Null<LaxeMeta> {
+		final startIndex = getIndex();
+
+		var name = null;
+		var typePath = null;
+
+		if(findAndParseNextContent("@")) {
+			if(findAndParseNextContent("[")) {
+				name = "";
+				while(!ended && !checkAhead("]")) {
+					name += currentChar();
+					incrementIndex(1);
+					if(checkAhead("]]")) {
+						name += "]";
+					}
+				}
+				incrementIndex(1);
+			} else {
+				typePath = parseNextTypePath();
+				if(typePath == null) {
+					errorHere("Expected type path");
+					return null;
+				}
+			}
+		} else {
+			return null;
+		}
+
+		final exprs = if(parseNextContent("(")) {
+			parseNextExpressionList(")");
+		} else {
+			null;
+		}
+
+		final pos = makePosition(startIndex);
+
+		if(name != null) {
+			return StringMeta({
+				name: name,
+				pos: pos,
+				params: exprs
+			});
+		}
+
+		return TypedMeta(new DecorPointer(typePath, pos, exprs));
+	}
+
+	public function parseAllNextDecors(): Metadata {
+		var result = {
+			string: null,
+			typed: null
+		};
+
+		var meta = null;
+		while((meta = parseNextDecor()) != null) {
+			switch(meta) {
+				case StringMeta(entry): {
+					if(result.string == null) result.string = [];
+					result.string.push(entry);
+				}
+				case TypedMeta(decor): {
+					if(result.typed == null) result.typed = [];
+					result.typed.push(decor);
+				}
+			}
+		}
+
+		return result;
 	}
 
 	// props

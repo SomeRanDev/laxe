@@ -1,2 +1,6 @@
 def helloFromLaxe():
 	trace("Hello from Laxe!");
+
+class Another:
+	def new:
+		trace("jfdksl");

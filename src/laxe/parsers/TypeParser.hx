@@ -65,6 +65,10 @@ class TypeParser {
 
 		if(idents.length == 1) {
 			if(startsWithLowerCase(idents[0].ident)) {
+				if(idents[0].ident == "expr") {
+					return TPath({ pack: ["laxe", "ast"], name: "ExprEx" });
+				}
+
 				final name = switch(idents[0].ident) {
 					case "int": "Int";
 					case "float": "Float";

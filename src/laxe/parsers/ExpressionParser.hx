@@ -9,6 +9,7 @@ import laxe.types.Tuple;
 
 import laxe.parsers.Parser;
 
+import laxe.ast.DecorManager;
 import laxe.ast.Operators.Operator;
 import laxe.ast.Operators.PrefixOperators;
 import laxe.ast.Operators.InfixOperators;
@@ -109,6 +110,35 @@ class ExpressionParser {
 
 	public static function maybeExpr(p: Parser): Null<Expr> {
 		p.parseWhitespaceOrComments();
+
+		// ***************************************
+		// * Metadata and Decorators
+		// ***************************************
+		{
+			final metadata = p.parseAllNextDecors();
+			if(metadata.string != null || metadata.typed != null) {
+				var currentExpr = expr(p);
+
+				if(metadata.string != null) {
+					metadata.string.reverse();
+					for(entry in metadata.string) {
+						currentExpr = {
+							expr: EMeta(entry, currentExpr),
+							pos: entry.pos
+						};
+					}
+				}
+
+				if(metadata.typed != null) {
+					for(decor in metadata.typed) {
+						decor.setExpr(currentExpr);
+						p.addDecorPointer(decor);
+					}
+				}
+
+				return currentExpr;
+			}
+		}
 
 		final startIndex = p.getIndex();
 
