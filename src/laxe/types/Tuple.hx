@@ -11,6 +11,8 @@ class Tuple {
 
 	static var emptyPosition: Null<Position> = null;
 	static var tuplesCreated = [];
+	static var namedTuplesCreated: Map<String, String> = [];
+	static var namedTuplesCounter: Array<Int> = [];
 
 	static function ensureEmptyPosition() {
 		if(emptyPosition == null) {
@@ -25,6 +27,90 @@ class Tuple {
 		}
 	}
 
+	public static function ensureNamed(names: Array<String>) {
+		final size = names.length;
+		ensure(size);
+
+		final typeParams: Array<TypeParamDecl> = [];
+		for(i in 0...size) {
+			final typeName = String.fromCharCode(65 + i);
+			typeParams.push({ name: typeName });
+		}
+
+		final name = "NamedTuple" + size + "_" + (names.join("_"));
+		final key = names.join("|");
+		if(!namedTuplesCreated.exists(key)) {
+			final complexTypeParams = typeParams.map(t -> TPType(TPath({ name: t.name, pack: [] })));
+			final complexType = TPath(generateTypePath(size, complexTypeParams));
+
+			final fields = [];
+			var i = 0;
+			for(n in names) {
+				final path = {
+					pack: [],
+					name: typeParams[i].name
+				}
+
+				fields.push({
+					pos: emptyPosition,
+					name: n,
+					kind: FProp("get", "set", TPath(path), null),
+					access: [APublic]
+				});
+
+				final icomp = "_" + i;
+				final comp = "component" + (i++);
+
+				fields.push({
+					pos: emptyPosition,
+					name: "get_" + n,
+					kind: FFun({
+						args: [],
+						expr: macro return this.$icomp
+					}),
+					access: [APublic]
+				});
+
+				fields.push({
+					pos: emptyPosition,
+					name: "set_" + n,
+					kind: FFun({
+						args: [{ name: "v" }],
+						expr: macro @:privateAccess return this.$icomp = v
+					}),
+					access: [APublic]
+				});
+			}
+
+			final abstractTypeDef = {
+				pos: emptyPosition,
+				pack: [],
+				name: name,
+				params: typeParams,
+				meta: [ { name: ":forward", pos: emptyPosition } ],
+				fields: fields,
+				kind: TDAbstract(complexType, [complexType], [complexType])
+			};
+
+			Context.defineModule("laxe.Tuple", [ abstractTypeDef ]);
+		}
+
+		return {
+			pack: ["laxe"],
+			name: "Tuple",
+			sub: name
+		};
+	}
+
+	static function generateTypePath(paramsLength: Int, params: Null<Array<TypeParam>> = null): TypePath {
+		return {
+			pack: ["laxe"],
+			name: "Tuple",
+			sub: "Tuple" + paramsLength,
+			params: params
+		};
+	}
+
 	public static function makeTupleExpr(params: Array<Expr>, pos: Position): Expr {
 		final paramsLength = params.length;
 
@@ -35,11 +121,7 @@ class Tuple {
 		ensure(paramsLength);
 
 		final result = {
-			expr: ENew({
-				pack: ["laxe"],
-				name: "Tuple",
-				sub: "Tuple" + paramsLength
-			}, params),
+			expr: ENew(generateTypePath(paramsLength), params),
 			pos: pos
 		};
 
@@ -187,7 +269,6 @@ class Tuple {
 			fields: fields,
 			kind: TDClass(null, null, false, false, false)
 		});
-
 
 		Context.defineModule("laxe.Tuple", typeDefinitions);
 	}

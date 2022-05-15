@@ -173,7 +173,15 @@ class GenericClass<T>:
 	def new(value: T):
 		trace('The generic value is $value');
 
-decor Thing:
+# interface
+interface Blaable:
+	def bla -> void;
+
+class TestImpl implements Blaable:
+	def bla: trace("bla");
+
+# decorators
+decor AddThree:
 	def onExpr(e: expr) -> expr:
 		e.traceSelf();
-		return expr.fromString("1 + 2 + 3");
+		return expr.fromString(e.toString() + " + 3");

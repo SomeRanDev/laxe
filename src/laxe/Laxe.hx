@@ -36,6 +36,8 @@ function Start() {
 		LoadFiles(FileSystem.readDirectory(p), p);
 	}
 	Compile();
+
+	laxe.types.Tuple.ensureNamed(["a", "b"]);
 }
 
 @:nullSafety(Strict)
@@ -55,11 +57,6 @@ function LoadFiles(files: Array<String>, directoryString: String) {
 function LoadFile(f: String, p: Path) {
 	final m = new ModuleParser(f, p);
 	Modules.push(m);
-}
-
-macro function bla() {
-	final a = macro 1 + 2;
-	return macro $a;
 }
 
 @:nullSafety(Strict)

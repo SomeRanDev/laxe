@@ -267,6 +267,8 @@ class ModuleParser {
 				final result = p.parseNextExpression();
 				p.findAndParseNextContent(";");
 				result;
+			} else if(p.findAndParseNextContent(";")) {
+				null;
 			} else {
 				null;
 			}
@@ -358,8 +360,8 @@ class ModuleParser {
 				} else {
 					[];
 				}
-				
-				final tdClass = TDClass(superType, interfaces, name.ident == "interface", isFinal, isAbstract);
+
+				final tdClass = TDClass(superType, interfaces, classIdent.ident == "interface", isFinal, isAbstract);
 				return Class(name.ident, p.makePosition(startIndex), meta, params, tdClass, fields);
 			} else {
 				p.errorHere("Expected class name");
