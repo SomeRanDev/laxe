@@ -118,6 +118,15 @@ def main:
 	trace(t);
 	trace(t.1);
 
+	# named tuples
+	let namedTuple = returnNamedTuple();
+	trace(namedTuple.b);
+
+	takeInNormalTuple(namedTuple);
+
+	let anotherNamedTuple: (b: int, c: int) = namedTuple.unnamed();
+	trace(anotherNamedTuple.b);
+
 	# another function
 	anotherFunction();
 
@@ -157,6 +166,13 @@ def doMath(a: int, b: int) -> int:
 
 # inline function
 def anotherFunction(): trace("calling from another function");
+
+# named tuple
+def returnNamedTuple -> (a: int, b: int):
+	return (123, 321);
+
+def takeInNormalTuple(t: (int, int)):
+	trace(t);
 
 # normal class
 @[:rtti]

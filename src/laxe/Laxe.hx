@@ -36,8 +36,6 @@ function Start() {
 		LoadFiles(FileSystem.readDirectory(p), p);
 	}
 	Compile();
-
-	laxe.types.Tuple.ensureNamed(["a", "b"]);
 }
 
 @:nullSafety(Strict)

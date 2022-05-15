@@ -12,7 +12,7 @@ class TypeParser {
 		final startIndex = p.getIndex();
 
 		if(p.findAndParseNextContent("(")) {
-			final typeList = parseTypeList(p, ")");
+			final typeList = parseTypeList(p, ")", true);
 
 			final returnType = if(p.findAndCheckAhead("->")) {
 				p.incrementIndex(2);
@@ -22,15 +22,28 @@ class TypeParser {
 			}
 
 			return if(returnType != null) {
-				TFunction(typeList, returnType);
+				TFunction(typeList.map(t -> t.type), returnType);
 			} else {
-				Tuple.ensure(typeList.length);
-				TPath({
-					pack: ["laxe"],
-					name: "Tuple",
-					sub: "Tuple" + typeList.length,
-					params: typeList.map(t -> TPType(t))
-				});
+				final names = [];
+				var anyHasName = false;
+				for(t in typeList) {
+					if(t.name != null) {
+						anyHasName = true;
+						names.push(t.name != null ? t.name : "");
+					}
+				}
+				if(anyHasName) {
+					final path: TypePath = Tuple.ensureNamed(names, typeList.map(t -> t.type));
+					TPath(path);
+				} else {
+					Tuple.ensure(typeList.length);
+					TPath({
+						pack: ["laxe"],
+						name: "Tuple",
+						sub: "Tuple" + typeList.length,
+						params: typeList.map(t -> TPType(t.type))
+					});
+				}
 			}
 		}
 
@@ -114,7 +127,7 @@ class TypeParser {
 		var params = null;
 		if(p.findAndParseNextContent("<")) {
 			final typeList = parseTypeList(p, ">");
-			params = typeList.map(t -> TPType(t));
+			params = typeList.map(t -> TPType(t.type));
 		}
 
 		var result = TPath({
@@ -145,7 +158,7 @@ class TypeParser {
 		return result;
 	}
 
-	static function parseTypeList(p: Parser, endChar: String): Array<ComplexType> {
+	static function parseTypeList(p: Parser, endChar: String, allowNames: Bool = false): Array<{ name: Null<String>, type: ComplexType }> {
 		final result = [];
 
 		if(!p.findAndCheckAhead(endChar)) {
@@ -156,8 +169,21 @@ class TypeParser {
 					break;
 				}
 
-				result.push(parseType(p));
-
+				final t = parseType(p);
+				if(p.findAndParseNextContent(":")) {
+					if(!allowNames) {
+						p.errorHere("Expected ',' or '" + endChar + "'");
+					} else {
+						final name = switch(t) {
+							case TPath(path): path.pack.join("") + path.name;
+							case _: null;
+						}
+						result.push({ name: name, type: parseType(p) });
+					}
+				} else {
+					result.push({ name: null, type: t });
+				}
+				
 				if(p.findAndCheckAhead(endChar)) {
 					p.incrementIndex(endChar.length);
 					break;

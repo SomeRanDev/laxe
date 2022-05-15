@@ -2,6 +2,8 @@ package laxe.types;
 
 #if (macro || laxeRuntime)
 
+using StringTools;
+
 import haxe.macro.Context;
 import haxe.macro.Expr;
 
@@ -27,7 +29,24 @@ class Tuple {
 		}
 	}
 
-	public static function ensureNamed(names: Array<String>) {
+	static function getComplexTypeNamed(t: ComplexType) {
+		final str = haxe.macro.ComplexTypeTools.toString(t);
+		return str
+			.replace(".", "_")
+			.replace("<", "_")
+			.replace(">", "_")
+			.replace("-", "_");
+	}
+
+	static function getNamedTupleName(names: Array<String>, types: Array<ComplexType>) {
+		var name = "NamedTuple" + names.length + "_";// + (names.join("_"));
+		for(i in 0...names.length) {
+			name += (names[i] + "_" + getComplexTypeNamed(types[i])) + (i < names.length - 1 ? "_" : "");
+		}
+		return name;
+	}
+
+	public static function ensureNamed(names: Array<String>, types: Array<ComplexType>): TypePath {
 		final size = names.length;
 		ensure(size);
 
@@ -37,11 +56,10 @@ class Tuple {
 			typeParams.push({ name: typeName });
 		}
 
-		final name = "NamedTuple" + size + "_" + (names.join("_"));
+		final name = getNamedTupleName(names, types);
 		final key = names.join("|");
 		if(!namedTuplesCreated.exists(key)) {
-			final complexTypeParams = typeParams.map(t -> TPType(TPath({ name: t.name, pack: [] })));
-			final complexType = TPath(generateTypePath(size, complexTypeParams));
+			final complexType = TPath(generateTypePath(size, types.map(t -> TPType(t))));
 
 			final fields = [];
 			var i = 0;
@@ -54,12 +72,12 @@ class Tuple {
 				fields.push({
 					pos: emptyPosition,
 					name: n,
-					kind: FProp("get", "set", TPath(path), null),
+					kind: FProp("get", "set", types[i], null),
 					access: [APublic]
 				});
 
 				final icomp = "_" + i;
-				final comp = "component" + (i++);
+				(i++);
 
 				fields.push({
 					pos: emptyPosition,
@@ -68,7 +86,7 @@ class Tuple {
 						args: [],
 						expr: macro return this.$icomp
 					}),
-					access: [APublic]
+					access: [APublic, AInline]
 				});
 
 				fields.push({
@@ -78,15 +96,25 @@ class Tuple {
 						args: [{ name: "v" }],
 						expr: macro @:privateAccess return this.$icomp = v
 					}),
-					access: [APublic]
+					access: [APublic, AInline]
 				});
 			}
+
+			fields.push({
+				pos: emptyPosition,
+				name: "unnamed",
+				kind: FFun({
+					args: [],
+					ret: complexType,
+					expr: macro @:privateAccess return this
+				}),
+				access: [APublic, AInline]
+			});
 
 			final abstractTypeDef = {
 				pos: emptyPosition,
 				pack: [],
 				name: name,
-				params: typeParams,
 				meta: [ { name: ":forward", pos: emptyPosition } ],
 				fields: fields,
 				kind: TDAbstract(complexType, [complexType], [complexType])
