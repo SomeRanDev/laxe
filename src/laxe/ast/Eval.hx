@@ -30,8 +30,33 @@ package laxe.ast;
 import haxe.macro.Expr;
 import haxe.macro.Context;
 
+// This eval hack is unable to run `trace` normally.
+// So instead, instances of `trace` are replaced with the `evalTrace` function.
+function convertTraceToExprTrace(e: Expr) {
+	switch(e.expr) {
+		case ECall({ expr: EConst(CIdent("trace")), pos: p }, params): {
+			// get new identifier for trace
+			final p = e.pos;
+			final ident = macro @:pos(p) laxe.ast.Eval.evalTrace;
+
+			// add pos infos to past parameter
+			final v = Context.getPosInfos(e.pos);
+			params.push(macro $v{v});
+
+			// generate new expression
+			return {
+				expr: ECall(ident, params),
+				pos: e.pos
+			}
+		}
+		case _:
+	}
+	return haxe.macro.ExprTools.map(e, convertTraceToExprTrace);
+}
+
 function exprToFunction(e: Expr) {
-	Context.typeof(macro laxe.ast.Eval._storeFunction(function() return $e));
+	final newE = haxe.macro.ExprTools.map(e, convertTraceToExprTrace);
+	Context.typeof(macro laxe.ast.Eval._storeFunction(function() return $newE));
 	return _func;
 }
 
@@ -41,4 +66,20 @@ function exprToFunction(e: Expr) {
 @:exclude macro function _storeFunction(f: () -> (() -> Void)) {
 	_func = f();
 	return macro null;
+}
+
+@:exclude function evalTrace(d: Dynamic, pos: Null<{ file: String, min: Int, max: Int }> = null) {
+	#if macro
+	final prefix = if(pos != null) {
+		var loc = haxe.macro.PositionTools.toLocation(Context.makePosition(pos));
+		loc.file + ":" + loc.range.start.line;
+	} else {
+		"";
+	}
+	
+	final s = Std.string(d);
+	haxe.Log.trace('${prefix}: $s', null);
+	#else
+	trace(d);
+	#end
 }

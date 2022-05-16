@@ -236,7 +236,7 @@ class ValueParser {
 		final result = parser.parseNextIdent();
 
 		if(result != null && result.ident == "expr") {
-			final e = macro laxe.ast.ExprEx;
+			final e = macro laxe.ast.LaxeExpr;
 			return {
 				expr: e.expr,
 				pos: result.pos

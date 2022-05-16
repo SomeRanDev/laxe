@@ -81,9 +81,9 @@ class Parser {
 	public function getIndent(): String { return lineIndent; }
 
 	// decor
-	public function addDecorPointer(d: DecorPointer) {
+	public function addExprDecorPointer(d: DecorPointer) {
 		if(module != null) {
-			module.addDecorPointer(d);
+			module.addExprDecorPointer(d);
 		}
 	}
 
@@ -99,7 +99,6 @@ class Parser {
 
 		@:privateAccess {
 			lineStartIndex = state.lineStartIndex;
-			lineIndent = state.lineIndent;
 			lastParsedWhitespaceIndex = state.lastParsedWhitespaceIndex;
 			touchedContentOnThisLine = state.touchedContentOnThisLine;
 		}

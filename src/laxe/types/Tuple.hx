@@ -115,7 +115,10 @@ class Tuple {
 				pos: emptyPosition,
 				pack: [],
 				name: name,
-				meta: [ { name: ":forward", pos: emptyPosition } ],
+				meta: [
+					{ name: ":forward", pos: emptyPosition },
+					{ name: ":exclude", pos: emptyPosition }
+				],
 				fields: fields,
 				kind: TDAbstract(complexType, [complexType], [complexType])
 			};

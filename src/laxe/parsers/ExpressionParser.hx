@@ -132,7 +132,7 @@ class ExpressionParser {
 				if(metadata.typed != null) {
 					for(decor in metadata.typed) {
 						decor.setExpr(currentExpr);
-						p.addDecorPointer(decor);
+						p.addExprDecorPointer(decor);
 					}
 				}
 
@@ -314,14 +314,17 @@ class ExpressionParser {
 		// * While expression
 		// ***************************************
 		{
+			final runonceKey = p.tryParseIdent("runonce");
 			final whileKey = p.tryParseIdent("while");
 			if(whileKey != null) {
 				final cond = expr(p);
 				final block = p.parseBlock();
 				return {
-					expr: EWhile(cond, block, true),
+					expr: EWhile(cond, block, runonceKey == null),
 					pos: p.mergePos(whileKey.pos, block.pos)
 				};
+			} else if(runonceKey != null) {
+				p.errorHere("Expected 'while'");
 			}
 		}
 
@@ -340,7 +343,7 @@ class ExpressionParser {
 				if(p.findAndParseNextContent(":")) {
 					while(true) {
 						if(p.ended) {
-							p.errorHere("Unexpected end of file");
+							//p.errorHere("Unexpected end of file");
 							break;
 						}
 

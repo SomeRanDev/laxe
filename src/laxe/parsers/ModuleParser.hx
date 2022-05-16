@@ -51,8 +51,8 @@ class ModuleParser {
 		parseModule();
 	}
 
-	public function addDecorPointer(d: DecorPointer) {
-		decorManager.addPointer(d);
+	public function addExprDecorPointer(d: DecorPointer) {
+		decorManager.addPointerToExpr(d);
 	}
 
 	function parseModule() {
@@ -93,11 +93,24 @@ class ModuleParser {
 	}
 
 	public function applyMeta() {
-		decorManager.ApplyDecors();
+		decorManager.ApplyDecors(this);
 
 		for(m in members) {
 			addMemberToTypes(m.member, m.metadata);
 		}
+	}
+
+	function findDecorFromTypePath(typePath: TypePath) {
+		final name = typePath.name;
+		if(typePath.pack.length == 0 && typePath.sub == null) {
+			for(d in decors) {
+				if(d.name == name) {
+					return d;
+				}
+			}
+		}
+		
+		return null;
 	}
 
 	function addMemberToTypes(member: LaxeModuleMember, metadata: Parser.Metadata) {
