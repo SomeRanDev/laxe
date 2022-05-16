@@ -162,12 +162,7 @@ def main:
 
 	# test decor
 	trace(@AddThree 0);
-
-	@AddThree @[:forward] switch 123:
-		case 1 | 2 if true:
-			trace("1 or 2");
-		case _:
-			pass
+	trace(@AddThree 123);
 
 # args and return types
 def doMath(a: int, b: int) -> int:
@@ -209,5 +204,4 @@ class TestImpl implements Blaable:
 # decorators
 decor AddThree:
 	def onExpr(e: expr) -> expr:
-		trace(e.toString());
 		return expr.fromString(e.toString() + " + 3");

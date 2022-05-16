@@ -32,6 +32,7 @@ import haxe.macro.Context;
 
 // This eval hack is unable to run `trace` normally.
 // So instead, instances of `trace` are replaced with the `evalTrace` function.
+@:nullSafety(Strict)
 function convertTraceToExprTrace(e: Expr) {
 	switch(e.expr) {
 		case ECall({ expr: EConst(CIdent("trace")), pos: p }, params): {
@@ -54,21 +55,27 @@ function convertTraceToExprTrace(e: Expr) {
 	return haxe.macro.ExprTools.map(e, convertTraceToExprTrace);
 }
 
-function exprToFunction(e: Expr) {
+@:nullSafety(Strict)
+function exprToFunction(e: Expr): Dynamic {
 	final newE = haxe.macro.ExprTools.map(e, convertTraceToExprTrace);
 	Context.typeof(macro laxe.ast.Eval._storeFunction(function() return $newE));
-	return _func;
+	@:nullSafety(Off) return _func;
 }
 
 #end
 
-@:exclude var _func: Dynamic = null;
-@:exclude macro function _storeFunction(f: () -> (() -> Void)) {
+@:exclude var _func: Null<Dynamic> = null;
+
+@:nullSafety(Strict)
+@:exclude
+macro function _storeFunction(f: () -> (() -> Void)) {
 	_func = f();
 	return macro null;
 }
 
-@:exclude function evalTrace(d: Dynamic, pos: Null<{ file: String, min: Int, max: Int }> = null) {
+@:nullSafety(Strict)
+@:exclude
+function evalTrace(d: Dynamic, pos: Null<{ file: String, min: Int, max: Int }> = null) {
 	#if macro
 	final prefix = if(pos != null) {
 		var loc = haxe.macro.PositionTools.toLocation(Context.makePosition(pos));

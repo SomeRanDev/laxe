@@ -7,7 +7,9 @@ import haxe.macro.Context;
 @:exclude
 @:forward
 abstract LaxeExpr(Expr) from Expr to Expr {
-	public function new(e: Expr) { this = e; }
+	public function new(e: Expr) {
+		this = e;
+	}
 
 	// convert to laxe code string
 	public function toString() {

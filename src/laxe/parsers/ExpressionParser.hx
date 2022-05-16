@@ -343,7 +343,6 @@ class ExpressionParser {
 				if(p.findAndParseNextContent(":")) {
 					while(true) {
 						if(p.ended) {
-							//p.errorHere("Unexpected end of file");
 							break;
 						}
 
