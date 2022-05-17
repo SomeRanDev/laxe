@@ -60,7 +60,7 @@ function LoadFile(f: String, p: Path) {
 @:nullSafety(Strict)
 function Compile() {
 	for(m in Modules) {
-		m.applyMeta();
+		m.processModule();
 		m.defineModule();
 	}
 }

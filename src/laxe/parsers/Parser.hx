@@ -2,6 +2,8 @@ package laxe.parsers;
 
 #if (macro || laxeRuntime)
 
+import haxe.ds.Either;
+
 import haxe.macro.Context;
 import haxe.macro.Expr;
 
@@ -667,12 +669,26 @@ class Parser {
 	}
 
 	// import
-	public function parseAllNextImports(): Array<ImportExpr> {
+	public function parseAllNextImports(): Array<Either<ImportExpr, TypePath>> {
 		final result = [];
-		var imp = parseNextImport();
-		while(imp != null) {
-			result.push(imp);
-			imp = parseNextImport();
+		while(true) {
+			{
+				final imp = parseNextImport();
+				if(imp != null) {
+					result.push(Left(imp));
+					continue;
+				}
+			}
+
+			{
+				final use = parseNextUsing();
+				if(use != null) {
+					result.push(Right(use));
+					continue;
+				}
+			}
+
+			break;
 		}
 		return result;
 	}
@@ -701,6 +717,19 @@ class Parser {
 				path: paths,
 				mode: INormal
 			};
+		}
+		return null;
+	}
+
+	public function parseNextUsing(): Null<TypePath> {
+		if(findAndParseNextContent("using")) {
+			final p = parseNextTypePath();
+			if(p != null) {
+				parseNextContent(";");
+				return p;
+			} else {
+				errorHere("Expected type path");
+			}
 		}
 		return null;
 	}

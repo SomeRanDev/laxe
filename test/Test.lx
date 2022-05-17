@@ -9,6 +9,8 @@ comment
 import sub.Another;
 import sub.Another.helloFromAnotherModule;
 
+using StringTools;
+
 mut globalVariable = "this is global";
 
 @[test](123)
@@ -168,6 +170,10 @@ def main:
 	trace(@AddThree 0);
 	trace(@AddThree 123);
 	trace(@Another.AndMore "Dinosaurs");
+
+	# using
+	let myStr = "Hello World";
+	trace(myStr.replace("Hello", "Goodbye"));
 
 # args and return types
 def doMath(a: int, b: int) -> int:

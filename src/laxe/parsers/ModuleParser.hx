@@ -76,7 +76,19 @@ class ModuleParser {
 
 		p.parseWhitespaceOrComments();
 
-		imports = p.parseAllNextImports();
+		final importsAndUsings = p.parseAllNextImports();
+		for(iu in importsAndUsings) {
+			switch(iu) {
+				case Left(imp): {
+					if(imports == null) imports = [];
+					imports.push(imp);
+				}
+				case Right(use): {
+					if(usings == null) usings = [];
+					usings.push(use);
+				}
+			}
+		}
 
 		while(!p.ended) {
 			p.parseWhitespaceOrComments();
@@ -112,45 +124,86 @@ class ModuleParser {
 		}
 	}
 
-	public function applyMeta() {
+	// ========================================
+	// * Processing
+	// ========================================
+
+	public function processModule() {
 		processImports();
-
-		decorManager.ApplyDecors(this);
-
-		for(m in members) {
-			addMemberToTypes(m.member, m.metadata);
-		}
+		processUsings();
+		processDecors();
+		processMembers();
 	}
 
 	function processImports() {
-		final importsToBeDeleted = [];
-		for(i in 0...imports.length) {
-			final p = imports[i].path;
-			final len = p.length;
-			final names = p.map(p -> p.name);
-			final name = names.join(".");
-			if(LaxeModuleMap.exists(name)) {
-				final m = LaxeModuleMap[name];
-				importedModules[m.moduleName] = m;
-			} else {
-				final subName = names.pop();
-				final modName = names.join(".");
-				if(LaxeModuleMap.exists(modName)) {
-					final m = LaxeModuleMap[modName];
-					for(decor in m.decors) {
-						if(decor.name == subName) {
-							importedDecors.push(decor);
-							importsToBeDeleted.push(i);
-							break;
+		if(imports != null) {
+			final importsToBeDeleted = [];
+			for(i in 0...imports.length) {
+				final p = imports[i].path;
+				final names = p.map(p -> p.name);
+				final name = names.join(".");
+				if(LaxeModuleMap.exists(name)) {
+					final m = LaxeModuleMap[name];
+					importedModules[m.moduleName] = m;
+				} else {
+					final subName = names.pop();
+					final modName = names.join(".");
+					if(LaxeModuleMap.exists(modName)) {
+						final m = LaxeModuleMap[modName];
+						for(decor in m.decors) {
+							if(decor.name == subName) {
+								importedDecors.push(decor);
+								importsToBeDeleted.push(i);
+								break;
+							}
 						}
 					}
 				}
 			}
-		}
 
-		while(importsToBeDeleted.length > 0) {
-			final index = importsToBeDeleted.pop();
-			imports.splice(index, 1);
+			while(importsToBeDeleted.length > 0) {
+				final index = importsToBeDeleted.pop();
+				imports.splice(index, 1);
+			}
+		}
+	}
+
+	function processUsings() {
+		if(usings != null) {
+			final usingsToBeDeleted = [];
+			for(i in 0...usings.length) {
+				final u = usings[i];
+				final mPath = (u.pack.length > 0 ? u.pack.join(".") : "") + "." + u.name;
+				if(LaxeModuleMap.exists(mPath)) {
+					final m = LaxeModuleMap[mPath];
+					if(u.sub == null) {
+						importedModules[m.moduleName] = m;
+					} else {
+						for(decor in m.decors) {
+							if(decor.name == u.sub) {
+								importedDecors.push(decor);
+								usingsToBeDeleted.push(i);
+								break;
+							}
+						}
+					}
+				}
+			}
+
+			while(usingsToBeDeleted.length > 0) {
+				final index = usingsToBeDeleted.pop();
+				usings.splice(index, 1);
+			}
+		}
+	}
+
+	function processDecors() {
+		decorManager.ApplyDecors(this);
+	}
+
+	function processMembers() {
+		for(m in members) {
+			addMemberToTypes(m.member, m.metadata);
 		}
 	}
 
