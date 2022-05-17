@@ -666,6 +666,45 @@ class Parser {
 		return result;
 	}
 
+	// import
+	public function parseAllNextImports(): Array<ImportExpr> {
+		final result = [];
+		var imp = parseNextImport();
+		while(imp != null) {
+			result.push(imp);
+			imp = parseNextImport();
+		}
+		return result;
+	}
+
+	public function parseNextImport(): Null<ImportExpr> {
+		if(findAndParseNextContent("import")) {
+			parseWhitespaceOrComments();
+			
+			final paths = [];
+			while(!ended) {
+				var str = parseNextIdent();
+				if(str != null) {
+					paths.push({ name: str.ident, pos: str.pos });
+					if(parseNextContent(".")) {
+						continue;
+					} else {
+						parseNextContent(";");
+						break;
+					}
+				} else {
+					break;
+				}
+			}
+
+			return {
+				path: paths,
+				mode: INormal
+			};
+		}
+		return null;
+	}
+
 	// props
 	public function parseAllAccess(): Array<Access> {
 		final accessorNames = tryParseMultiIdentOneEach("pub", "priv", "static", "override", "dyn",

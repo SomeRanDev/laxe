@@ -23,10 +23,15 @@ enum LaxeModuleMember {
 
 @:nullSafety(Strict)
 class ModuleParser {
+	var moduleName: String;
 	var modulePath: String;
+
 	var types: Array<TypeDefinition>;
 	var imports: Null<Array<ImportExpr>>;
 	var usings: Null<Array<TypePath>>;
+
+	var importedModules: Map<String, ModuleParser>;
+	var importedDecors: Array<Decor>;
 
 	var p: Parser;
 	var decorManager: DecorManager;
@@ -34,11 +39,22 @@ class ModuleParser {
 	var members: Array<{ member: LaxeModuleMember, metadata: Parser.Metadata }>;
 	var decors: Array<Decor>;
 
+	static var LaxeModuleMap: Map<String, ModuleParser> = [];
+
 	public function new(filePath: String, path: Path) {
 		modulePath = generateModulePath(path);
+		moduleName = {
+			final arr = modulePath.split(".");
+			arr[arr.length - 1];
+		};
+		LaxeModuleMap[modulePath] = this;
+
 		types = [];
 		imports = null;
 		usings = null;
+
+		importedModules = [];
+		importedDecors = [];
 
 		final content = File.getContent(filePath);
 
@@ -57,6 +73,10 @@ class ModuleParser {
 
 	function parseModule() {
 		var lastIndex = null;
+
+		p.parseWhitespaceOrComments();
+
+		imports = p.parseAllNextImports();
 
 		while(!p.ended) {
 			p.parseWhitespaceOrComments();
@@ -93,10 +113,44 @@ class ModuleParser {
 	}
 
 	public function applyMeta() {
+		processImports();
+
 		decorManager.ApplyDecors(this);
 
 		for(m in members) {
 			addMemberToTypes(m.member, m.metadata);
+		}
+	}
+
+	function processImports() {
+		final importsToBeDeleted = [];
+		for(i in 0...imports.length) {
+			final p = imports[i].path;
+			final len = p.length;
+			final names = p.map(p -> p.name);
+			final name = names.join(".");
+			if(LaxeModuleMap.exists(name)) {
+				final m = LaxeModuleMap[name];
+				importedModules[m.moduleName] = m;
+			} else {
+				final subName = names.pop();
+				final modName = names.join(".");
+				if(LaxeModuleMap.exists(modName)) {
+					final m = LaxeModuleMap[modName];
+					for(decor in m.decors) {
+						if(decor.name == subName) {
+							importedDecors.push(decor);
+							importsToBeDeleted.push(i);
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		while(importsToBeDeleted.length > 0) {
+			final index = importsToBeDeleted.pop();
+			imports.splice(index, 1);
 		}
 	}
 
@@ -108,8 +162,33 @@ class ModuleParser {
 					return d;
 				}
 			}
+			for(d in importedDecors) {
+				if(d.name == name) {
+					return d;
+				}
+			}
 		}
-		
+
+		if(typePath.pack.length == 0 && typePath.sub != null) {
+			final m = importedModules[typePath.name];
+			for(d in m.decors) {
+				if(d.name == typePath.sub) {
+					return d;
+				}
+			}
+		}
+
+		final targetDotPath = typePath.pack.join(".") + "." + typePath.name;
+		for(m in laxe.Laxe.Modules) {
+			if(m.modulePath == targetDotPath) {
+				for(d in m.decors) {
+					if(d.name == typePath.sub || d.name == name) {
+						return d;
+					}
+				}
+			}
+		}
+
 		return null;
 	}
 
@@ -169,7 +248,9 @@ class ModuleParser {
 	}
 
 	public function defineModule() {
-		Context.defineModule(modulePath, types, imports, usings);
+		if(types.length > 0) {
+			Context.defineModule(modulePath, types, imports, usings);
+		}
 	}
 
 	// ========================================

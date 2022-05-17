@@ -67,10 +67,10 @@ class DecorManager {
 								}
 							}
 						} else {
-							Context.warning('Decorator ${pathToString(d.path)} does not define an onExpr(expr) -> expr method', d.pos);
+							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onExpr(expr) -> expr method', d.pos);
 						}
 					} else {
-						Context.warning('Decorator ${pathToString(d.path)} could not be found', d.pos);
+						Context.warning('Decorator \'${pathToString(d.path)}\' could not be found', d.pos);
 					}
 				}
 			}

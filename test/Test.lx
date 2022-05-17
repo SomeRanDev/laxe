@@ -6,6 +6,9 @@ line
 comment
 ###
 
+import sub.Another;
+import sub.Another.helloFromAnotherModule;
+
 mut globalVariable = "this is global";
 
 @[test](123)
@@ -140,6 +143,7 @@ def main:
 
 	# multi-file
 	sub.Another.helloFromLaxe();
+	helloFromAnotherModule();
 
 	# call haxe function
 	HaxeTest.helloFromHaxe();
@@ -163,6 +167,7 @@ def main:
 	# test decor
 	trace(@AddThree 0);
 	trace(@AddThree 123);
+	trace(@Another.AndMore "Dinosaurs");
 
 # args and return types
 def doMath(a: int, b: int) -> int:

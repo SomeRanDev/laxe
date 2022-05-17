@@ -1,6 +1,13 @@
 def helloFromLaxe():
 	trace("Hello from Laxe!");
 
+def helloFromAnotherModule():
+	trace("Hello from another module!");
+
 class Another:
 	def new:
 		trace("jfdksl");
+
+decor AndMore:
+	def onExpr(e: expr) -> expr:
+		return expr.fromString(e.toString() + " + ' and more!'");
