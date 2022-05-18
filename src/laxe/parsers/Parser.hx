@@ -31,6 +31,8 @@ class ParserState {
 	var lastParsedWhitespaceIndex: Int;
 	var touchedContentOnThisLine: Bool;
 
+	var isTemplate: Bool;
+
 	public function new(parser: Parser) {
 		index = parser.index;
 		lineNumber = parser.lineNumber;
@@ -41,6 +43,7 @@ class ParserState {
 			lineIndent = parser.lineIndent;
 			lastParsedWhitespaceIndex = parser.lastParsedWhitespaceIndex;
 			touchedContentOnThisLine = parser.touchedContentOnThisLine;
+			isTemplate = parser.isTemplate;
 		}
 	}
 }
@@ -61,6 +64,8 @@ class Parser {
 	var lineIndent: String = "";
 	var lastParsedWhitespaceIndex: Int = -1;
 	var touchedContentOnThisLine: Bool = false;
+
+	var isTemplate: Bool;
 
 	var forcedPos: Null<Position> = null;
 
@@ -89,6 +94,14 @@ class Parser {
 		}
 	}
 
+	public function startTemplate() {
+		isTemplate = true;
+	}
+
+	public function endTemplate() {
+		isTemplate = false;
+	}
+
 	// save/restore state
 	public function saveParserState(): ParserState {
 		return new ParserState(this);
@@ -101,8 +114,10 @@ class Parser {
 
 		@:privateAccess {
 			lineStartIndex = state.lineStartIndex;
+			lineIndent = state.lineIndent;
 			lastParsedWhitespaceIndex = state.lastParsedWhitespaceIndex;
 			touchedContentOnThisLine = state.touchedContentOnThisLine;
+			isTemplate = state.isTemplate;
 		}
 	}
 

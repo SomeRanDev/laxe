@@ -177,7 +177,9 @@ class ExpressionParser {
 			if(macroIdent != null) {
 				final exprIdent = p.tryParseIdent("expr");
 				if(exprIdent != null) {
+					p.startTemplate();
 					var le: LaxeExpr = p.parseBlock();
+					p.endTemplate();
 					switch(le.expr) {
 						case EBlock(exprs): {
 							if(exprs.length == 1) {
@@ -190,7 +192,22 @@ class ExpressionParser {
 					final reifExpr = Context.parse("macro " + le.toHaxeString(), pos);
 					return reifExpr;
 				} else {
-					p.restoreParserState(save);
+					final typeIdent = p.tryParseIdent("type");
+					if(typeIdent != null) {
+						p.findAndParseNextContent(":");
+						p.startTemplate();
+						var path: ComplexType = p.parseNextType();
+						p.endTemplate();
+						if(path != null) {
+							final pos = Context.makePosition({ file: p.filePath, min: 0, max: 0});
+							final reifExpr = Context.parse("macro : " + haxe.macro.ComplexTypeTools.toString(path), pos);
+							return reifExpr;
+						} else {
+							p.errorHere("Expected type path");
+						}
+					} else {
+						p.restoreParserState(save);
+					}
 				}
 			}
 		}

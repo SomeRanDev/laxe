@@ -134,6 +134,10 @@ class TypeParser {
 			params = typeList.map(t -> TPType(t.type));
 		}
 
+		if(name.length <= 0 && pack.length > 0) {
+			name = pack.pop();
+		}
+
 		var result = TPath({
 			pack: pack,
 			name: name,

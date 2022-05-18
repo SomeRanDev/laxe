@@ -172,8 +172,10 @@ def main:
 	trace(@Another.AndMore "Dinosaurs");
 
 	# using
-	let myStr = "Hello World";
+	let myStr = "HelloWorld";
 	trace(myStr.replace("Hello", "Goodbye"));
+
+	trace(template type: a.$myStr<Int, String>);
 
 # args and return types
 def doMath(a: int, b: int) -> int:
