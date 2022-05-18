@@ -47,6 +47,10 @@ class TypeParser {
 			}
 		}
 
+		if(p.findAndParseNextContent("{")) {
+			final typeList = parseTypeList(p, "}", true);
+		}
+
 		final idents = [];
 
 		final ident = p.parseNextIdent();

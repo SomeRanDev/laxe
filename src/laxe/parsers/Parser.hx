@@ -331,7 +331,8 @@ class Parser {
 
 	function isIdentCharStarter(c: Null<Int>): Bool {
 		if(c == null) return false;
-		return (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 95;
+		// letters, underscore (95), and dollar sign (36)
+		return (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 95 || c == 36;
 	}
 
 	function isIdentChar(c: Null<Int>): Bool {
@@ -441,6 +442,7 @@ class Parser {
 	}
 
 	// type
+	// TODO: support anonymous types and anonymous extends and intersection types
 	public function parseNextType(): Null<ComplexType> {
 		return TypeParser.parseType(this);
 	}

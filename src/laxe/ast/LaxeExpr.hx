@@ -130,4 +130,9 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		};
 		#end
 	}
+
+	// convert to haxe string
+	public function toHaxeString(): String {
+		return haxe.macro.ExprTools.toString(this);
+	}
 }

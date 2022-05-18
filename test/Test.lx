@@ -168,7 +168,7 @@ def main:
 
 	# test decor
 	trace(@AddThree 0);
-	trace(@AddThree 123);
+	trace(@AddFour 100);
 	trace(@Another.AndMore "Dinosaurs");
 
 	# using
@@ -214,5 +214,11 @@ class TestImpl implements Blaable:
 
 # decorators
 decor AddThree:
-	def onExpr(e: expr) -> expr:
-		return expr.fromString(e.toString() + " + 3");
+	def onExpr(original: expr) -> expr:
+		let str = original.toString();
+		return expr.fromString(str + " + 3");
+
+decor AddFour:
+	def onExpr(original: expr) -> expr:
+		return template expr: block:
+			$original + 54;

@@ -207,7 +207,7 @@ class ModuleParser {
 		}
 	}
 
-	function findDecorFromTypePath(typePath: TypePath) {
+	public function findDecorFromTypePath(typePath: TypePath) {
 		final name = typePath.name;
 		if(typePath.pack.length == 0 && typePath.sub == null) {
 			for(d in decors) {

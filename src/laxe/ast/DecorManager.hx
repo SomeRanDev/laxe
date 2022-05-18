@@ -53,28 +53,37 @@ class DecorManager {
 
 	public function ApplyDecors(module: ModuleParser) {
 		for(path => decorList in exprMap) {
-			@:privateAccess {
-				for(d in decorList) {
-					ProcessingPosition = d.pos;
-					final decor = module.findDecorFromTypePath(d.path);
-					if(decor != null) {
-						if(decor.onExpr != null) {
-							if(d.target != null) {
-								final result = decor.onExpr(d.target);
-								if(result != null) {
-									d.target.expr = result.expr;
-									d.target.pos = result.pos;
-								}
+			for(d in decorList) {
+				ProcessingPosition = d.pos;
+				final decor = module.findDecorFromTypePath(d.path);
+				if(decor != null) {
+					if(decor.onExpr != null) {
+						if(d.target != null) {
+							final result = decor.onExpr({
+								expr: d.target.expr,
+								pos: d.target.pos
+							});
+							if(result != null) {
+								ensureCompileTimePosition(result);
+								d.target.expr = result.expr;
+								d.target.pos = result.pos;
 							}
-						} else {
-							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onExpr(expr) -> expr method', d.pos);
 						}
 					} else {
-						Context.warning('Decorator \'${pathToString(d.path)}\' could not be found', d.pos);
+						Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onExpr(expr) -> expr method', d.pos);
 					}
+				} else {
+					Context.warning('Decorator \'${pathToString(d.path)}\' could not be found', d.pos);
 				}
 			}
 		}
+	}
+
+	function ensureCompileTimePosition(e: Dynamic): Expr {
+		if(Type.getClassName(Type.getClass(e.pos)) == null) {
+			e.pos = Context.makePosition(cast e.pos);
+		}
+		return haxe.macro.ExprTools.map(e, ensureCompileTimePosition);
 	}
 }
 

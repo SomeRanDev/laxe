@@ -16,6 +16,8 @@ import laxe.ast.Operators.InfixOperators;
 import laxe.ast.Operators.SuffixOperators;
 import laxe.ast.Operators.IntervalOperator;
 
+import laxe.ast.LaxeExpr;
+
 class ExpressionParser {
 	static function stringToUnop(s: String): Null<Unop> {
 		return switch(s) {
@@ -168,11 +170,36 @@ class ExpressionParser {
 			}
 		}
 
+		// macro
+		{
+			final save = p.saveParserState();
+			final macroIdent = p.tryParseIdent("template");
+			if(macroIdent != null) {
+				final exprIdent = p.tryParseIdent("expr");
+				if(exprIdent != null) {
+					var le: LaxeExpr = p.parseBlock();
+					switch(le.expr) {
+						case EBlock(exprs): {
+							if(exprs.length == 1) {
+								le = exprs[0];
+							}
+						}
+						case _:
+					}
+					final pos = Context.makePosition({ file: p.filePath, min: 0, max: 0});
+					final reifExpr = Context.parse("macro " + le.toHaxeString(), pos);
+					return reifExpr;
+				} else {
+					p.restoreParserState(save);
+				}
+			}
+		}
+
 		// ***************************************
 		// * Variable initialization
 		// ***************************************
 		{
-			var varIdent = p.tryParseOneIdent("var", "let", "mut");
+			final varIdent = p.tryParseOneIdent("var", "let", "mut");
 			if(varIdent != null) {
 				final varName = p.parseNextIdent();
 				if(varName != null) {
