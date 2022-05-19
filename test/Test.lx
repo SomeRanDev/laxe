@@ -154,7 +154,7 @@ def main:
 	trace(doMath(123, 321));
 
 	# create class
-	mut cls = new ClassTest();
+	mut cls = new Sponge();
 	cls.hello();
 
 	# create generic class
@@ -163,7 +163,7 @@ def main:
 	new GenericClass("Hello from generic class!");
 
 	# metadata
-	let rtti = haxe.rtti.Rtti.getRtti(ClassTest);
+	let rtti = haxe.rtti.Rtti.getRtti(Sponge);
 	trace(rtti.meta);
 
 	# test decor
@@ -195,7 +195,7 @@ def takeInNormalTuple(t: (int, int)):
 # normal class
 @[:rtti]
 @[this is meta](1, 2, 3)
-@laxe.test(123)
+@RenameToSponge
 class ClassTest:
 	def new: trace("Created ClassTest!");
 	def hello -> str: 
@@ -220,7 +220,14 @@ decor AddThree:
 		let str = original.toString();
 		return expr.fromString(str + " + 3");
 
+# expr decor
 decor AddFour:
 	def onExpr(original: expr) -> expr:
 		return template expr: block:
 			$original + 54;
+
+# type-def decor
+decor RenameToSponge:
+	def onTypeDef(original: dyn) -> dyn:
+		original.name = "Sponge";
+		return original;

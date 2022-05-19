@@ -11,9 +11,10 @@ class Decor {
 	var fields: Array<Field>;
 	var metadata: laxe.parsers.Parser.Metadata;
 
-	static var validFunctionNames = ["onExpr"];
+	static var validFunctionNames = ["onExpr", "onTypeDef"];
 
 	public var onExpr(default, null): Null<(Expr) -> Expr> = null;
+	public var onTypeDef(default, null): Null<(TypeDefinition) -> TypeDefinition> = null;
 
 	public function new(p: laxe.parsers.Parser, name: String, fields: Array<Field>, metadata: laxe.parsers.Parser.Metadata) {
 		this.p = p;
@@ -44,6 +45,7 @@ class Decor {
 	function addFunction(f: Field, fun: Function) {
 		switch(f.name) {
 			case "onExpr": setOnExpr(f, fun);
+			case "onTypeDef": setOnTypeDef(f, fun);
 		}
 	}
 
@@ -65,9 +67,32 @@ class Decor {
 		}
 	}
 
+	function setOnTypeDef(f: Field, fun: Function) {
+		if(onTypeDef != null) {
+			p.error("Duplicate onTypeDef function", f.pos);
+			return;
+		}
+
+		final funcExpr = {
+			expr: EFunction(FNamed(f.name, false), fun),
+			pos: f.pos
+		};
+
+		onTypeDef = Eval.exprToFunction(funcExpr);
+	}
+
 	function isComplexTypeExpr(c: Null<ComplexType>) {
 		return switch(c) {
 			case TPath({ name: "LaxeExpr", pack: ["laxe", "ast"], sub: null, params: null }): {
+				true;
+			}
+			case _: false;
+		}
+	}
+
+	function isComplexTypeTypeDef(c: Null<ComplexType>) {
+		return switch(c) {
+			case TPath({ name: "TypeDefinition", pack: ["haxe", "macro"], sub: null, params: null }): {
 				true;
 			}
 			case _: false;
@@ -83,6 +108,18 @@ class Decor {
 				true;
 			}
 			case _: isComplexTypeExpr(c);
+		}
+	}
+
+	function isComplexTypeTypeDefOrVoid(c: Null<ComplexType>) {
+		if(c == null) {
+			return true;
+		}
+		return switch(c) {
+			case TPath({ name: "Void", pack: [], sub: null, params: null }): {
+				true;
+			}
+			case _: isComplexTypeTypeDef(c);
 		}
 	}
 }

@@ -68,7 +68,7 @@ class ModuleParser {
 	}
 
 	public function addExprDecorPointer(d: DecorPointer) {
-		decorManager.addPointerToExpr(d);
+		decorManager.addPointer(d);
 	}
 
 	function parseModule() {
@@ -131,8 +131,8 @@ class ModuleParser {
 	public function processModule() {
 		processImports();
 		processUsings();
-		processDecors();
 		processMembers();
+		processDecors();
 	}
 
 	function processImports() {
@@ -246,29 +246,30 @@ class ModuleParser {
 	}
 
 	function addMemberToTypes(member: LaxeModuleMember, metadata: Parser.Metadata) {
+		var typeDef: Null<TypeDefinition> = null;
 		switch(member) {
 			case Variable(name, pos, meta, type, access): {
-				types.push({
+				typeDef = {
 					pos: pos,
 					pack: [],
 					name: name,
 					meta: metadata.string != null ? meta.concat(metadata.string) : meta,
 					kind: TDField(type, access),
 					fields: []
-				});
+				};
 			}
 			case Function(name, pos, meta, type, access): {
-				types.push({
+				typeDef = {
 					pos: pos,
 					pack: [],
 					name: name,
 					meta: metadata.string != null ? meta.concat(metadata.string) : meta,
 					kind: TDField((type), access),
 					fields: []
-				});
+				};
 			}
 			case Class(name, pos, meta, params, kind, fields): {
-				types.push({
+				typeDef = {
 					pos: pos,
 					pack: [],
 					name: name,
@@ -276,8 +277,17 @@ class ModuleParser {
 					params: params,
 					kind: kind,
 					fields: fields
-				});
+				};
 			}
+		}
+		if(typeDef != null) {
+			if(metadata.typed != null) {
+				for(d in metadata.typed) {
+					d.setTypeDef(typeDef);
+					decorManager.addPointer(d);
+				}
+			}
+			types.push(typeDef);
 		}
 	}
 

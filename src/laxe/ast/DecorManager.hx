@@ -12,7 +12,8 @@ class DecorPointer {
 	public var pos(default, null): Position;
 	public var params(default, null): Null<Array<Expr>>;
 
-	public var target(default, null): Null<Expr> = null;
+	public var targetExpr(default, null): Null<Expr> = null;
+	public var targetTypeDef(default, null): Null<TypeDefinition> = null;
 
 	public function new(path: TypePath, pos: Position, params: Null<Array<Expr>>) {
 		this.path = path;
@@ -21,7 +22,11 @@ class DecorPointer {
 	}
 
 	public function setExpr(e: Expr) {
-		target = e;
+		targetExpr = e;
+	}
+
+	public function setTypeDef(t: TypeDefinition) {
+		targetTypeDef = t;
 	}
 
 	public function name() {
@@ -30,21 +35,21 @@ class DecorPointer {
 }
 
 class DecorManager {
-	final exprMap: Map<String, Array<DecorPointer>>;
+	final pointerMap: Map<String, Array<DecorPointer>>;
 
 	public static var ProcessingPosition: Null<Position>;
 
 	public function new() {
-		exprMap = [];
+		pointerMap = [];
 		ProcessingPosition = null;
 	}
 
-	public function addPointerToExpr(d: DecorPointer) {
+	public function addPointer(d: DecorPointer) {
 		final pathStr = d.name();
-		if(!exprMap.exists(pathStr)) {
-			exprMap.set(pathStr, []);
+		if(!pointerMap.exists(pathStr)) {
+			pointerMap.set(pathStr, []);
 		}
-		exprMap[pathStr].push(d);
+		pointerMap[pathStr].push(d);
 	}
 
 	inline function pathToString(p: TypePath) {
@@ -52,25 +57,43 @@ class DecorManager {
 	}
 
 	public function ApplyDecors(module: ModuleParser) {
-		for(path => decorList in exprMap) {
+		for(path => decorList in pointerMap) {
 			for(d in decorList) {
 				ProcessingPosition = d.pos;
 				final decor = module.findDecorFromTypePath(d.path);
 				if(decor != null) {
-					if(decor.onExpr != null) {
-						if(d.target != null) {
+					if(d.targetExpr != null) {
+						if(decor.onExpr != null) {
 							final result = decor.onExpr({
-								expr: d.target.expr,
-								pos: d.target.pos
+								expr: d.targetExpr.expr,
+								pos: d.targetExpr.pos
 							});
 							if(result != null) {
 								ensureCompileTimePosition(result);
-								d.target.expr = result.expr;
-								d.target.pos = result.pos;
+								d.targetExpr.expr = result.expr;
+								d.targetExpr.pos = result.pos;
 							}
+						} else {
+							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onExpr(expr) -> expr method', d.pos);
 						}
-					} else {
-						Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onExpr(expr) -> expr method', d.pos);
+					} else if(d.targetTypeDef != null) {
+						if(decor.onTypeDef != null) {
+							final result = decor.onTypeDef(Reflect.copy(d.targetTypeDef));
+							if(result != null) {
+								//ensureCompileTimePosition(result);
+								d.targetTypeDef.pack = result.pack;
+								d.targetTypeDef.name = result.name;
+								d.targetTypeDef.doc = result.doc;
+								d.targetTypeDef.pos = result.pos;
+								d.targetTypeDef.meta = result.meta;
+								d.targetTypeDef.params = result.params;
+								d.targetTypeDef.isExtern = result.isExtern;
+								d.targetTypeDef.kind = result.kind;
+								d.targetTypeDef.fields = result.fields;
+							}
+						} else {
+							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onTypeDef(haxe.macro.TypeDefinition) -> haxe.macro.TypeDefinition method', d.pos);
+						}
 					}
 				} else {
 					Context.warning('Decorator \'${pathToString(d.path)}\' could not be found', d.pos);
