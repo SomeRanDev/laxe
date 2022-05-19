@@ -4,7 +4,6 @@ import haxe.macro.Expr;
 import haxe.macro.Context;
 
 @:nullSafety(Strict)
-@:exclude
 @:forward
 abstract LaxeExpr(Expr) from Expr to Expr {
 	public function new(e: Expr) {
@@ -12,7 +11,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 	}
 
 	// convert to laxe code string
-	public function toString() {
+	public inline function toString() {
 		return switch(this.expr) {
 			case EBlock(exprs): {
 				"block:\n" + blockToString(exprs);
@@ -71,19 +70,19 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	static function normalExprToString(e: Expr) {
+	static inline function normalExprToString(e: Expr) {
 		final le: LaxeExpr = e;
 		return le.toString();
 	}
 
-	static function possiblyBlockToString(expr: Expr) {
+	static inline function possiblyBlockToString(expr: Expr) {
 		return switch(expr.expr) {
 			case EBlock(exprs): blockToString(exprs);
 			case _: "\t" + normalExprToString(expr);
 		}
 	}
 
-	static function blockToString(exprs: Array<Expr>) {
+	static inline function blockToString(exprs: Array<Expr>) {
 		var result = [];
 		for(e in exprs) {
 			final le: LaxeExpr = e;
@@ -95,12 +94,12 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 	}
 
 	// utility
-	public function traceSelf() {
+	public inline function traceSelf() {
 		trace(toString());
 	}
 
 	// parse from string
-	public static function fromString(s: String, pos: Null<Position> = null): LaxeExpr {
+	public static inline function fromString(s: String, pos: Null<Position> = null): LaxeExpr {
 		#if macro
 		if(pos == null) {
 			pos = DecorManager.ProcessingPosition;
@@ -120,7 +119,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 	}
 
 	// parse from haxe string
-	public static function fromHaxeString(s: String): LaxeExpr {
+	public static inline function fromHaxeString(s: String): LaxeExpr {
 		#if macro
 		return Context.parse(s, Context.currentPos());
 		#else
@@ -132,7 +131,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 	}
 
 	// convert to haxe string
-	public function toHaxeString(): String {
+	public inline function toHaxeString(): String {
 		return haxe.macro.ExprTools.toString(this);
 	}
 }

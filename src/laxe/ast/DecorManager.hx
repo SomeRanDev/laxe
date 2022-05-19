@@ -2,6 +2,8 @@ package laxe.ast;
 
 #if (macro || laxeRuntime)
 
+import laxe.ast.LaxeTypeDefinition;
+
 import laxe.parsers.ModuleParser;
 
 import haxe.macro.Expr;
@@ -78,9 +80,11 @@ class DecorManager {
 						}
 					} else if(d.targetTypeDef != null) {
 						if(decor.onTypeDef != null) {
-							final result = decor.onTypeDef(Reflect.copy(d.targetTypeDef));
+							final result: LaxeTypeDefinition = decor.onTypeDef(Reflect.copy(d.targetTypeDef));
 							if(result != null) {
-								//ensureCompileTimePosition(result);
+								for(e in result.getAllExpr()) {
+									ensureCompileTimePosition(e);
+								}
 								d.targetTypeDef.pack = result.pack;
 								d.targetTypeDef.name = result.name;
 								d.targetTypeDef.doc = result.doc;
