@@ -121,6 +121,17 @@ def main:
 		trace('printing string error: $e');
 	catch:
 		trace(e);
+	
+	# expr functions
+	let localFunc1 = def(a):
+		return a * 2;
+	
+	trace("this should be 6 -> " + localFunc1(3));
+
+	def localFunc2(a):
+		trace("tracing the a in localFUnc2: " + a);
+	
+	localFunc2("!@#$%^");
 
 	# tuples
 	var t: (int, int, int) = (1, 2, 3);
@@ -157,6 +168,7 @@ def main:
 	mut cls = new Sponge();
 	cls.hello();
 	trace("Added using decor meta var: " + cls.asd);
+	cls.bla();
 
 	# create generic class
 	new GenericClass<int>(123);
@@ -232,4 +244,8 @@ decor RenameToSponge:
 	def onTypeDef(original: typeDef) -> typeDef:
 		original.name = "Sponge";
 		original.addVar("asd", template expr: 0);
+		original.addFunction(template expr:
+			def bla():
+				trace("we are within bla");
+		);
 		return original;

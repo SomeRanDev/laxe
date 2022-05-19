@@ -32,4 +32,28 @@ abstract LaxeTypeDefinition(TypeDefinition) from TypeDefinition to TypeDefinitio
 			access: [APublic]
 		});
 	}
+
+    public inline function addFunction(expr: LaxeExpr, name: Null<String> = null) {
+        switch(expr.expr) {
+            case EFunction(kind, f): {
+                final name = switch(kind) {
+                    case FNamed(name, _): name;
+                    case _: name;
+                }
+                #if macro
+                if(name == null) {
+                    Context.error("Unable to determine function name", expr.pos);
+                    return;
+                }
+                #end
+                this.fields.push({
+                    name: name != null ? name : "unnamed",
+                    pos: expr.pos,
+                    kind: FFun(f),
+                    access: [APublic]
+                });
+            }
+            case _:
+        }
+    }
 }

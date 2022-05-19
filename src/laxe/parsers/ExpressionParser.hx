@@ -573,6 +573,21 @@ class ExpressionParser {
 		}
 
 		// ***************************************
+		// * Function
+		// ***************************************
+		{
+			final defKey = p.tryParseIdent("def");
+			if(defKey != null) {
+				final func = p.parseFunctionAfterDef();
+				return {
+					expr: EFunction(func.k, func.f),
+					pos: p.makePosition(startIndex)
+				}
+			}
+		}
+		//parseFunctionAfterDef
+
+		// ***************************************
 		// * Value (Ident, Int, Float, String, Array, Struture, etc.)
 		// ***************************************
 		final value = p.parseNextValue();

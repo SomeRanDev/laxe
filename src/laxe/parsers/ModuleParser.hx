@@ -405,42 +405,9 @@ class ModuleParser {
 	}
 
 	function parseFunctionAfterDef(startIndex: Int, access: Array<Access>): Null<LaxeModuleMember> {
-		final name = p.parseNextIdent();
-
-		if(name != null) {
-			var args = p.parseNextFunctionArgs();
-			if(args == null) args = [];
-
-			final retType = if(p.findAndParseNextContent("->")) {
-				p.parseNextType();
-			} else {
-				null;
-			}
-
-			final expr = if(p.findAndCheckAhead(":")) {
-				p.parseBlock();
-			} else if(p.findAndParseNextContent("=")) {
-				p.parseWhitespaceOrComments();
-				final result = p.parseNextExpression();
-				p.findAndParseNextContent(";");
-				result;
-			} else if(p.findAndParseNextContent(";")) {
-				null;
-			} else {
-				null;
-			}
-
-			final ffun = FFun({
-				args: args,
-				ret: retType,
-				expr: expr
-			});
-			return Function(name.ident, p.makePosition(startIndex), [], ffun, access);
-		} else {
-			p.errorHere("Expected function name");
-		}
-
-		return null;
+		final fun = p.parseFunctionAfterDef(true);
+		final ffun = FFun(fun.f);
+		return Function(fun.n, p.makePosition(startIndex), [], ffun, access);
 	}
 
 	function parseVariableAfterLet(varIdent: Parser.StringAndPos, startIndex: Int, access: Array<Access>): Null<LaxeModuleMember> {

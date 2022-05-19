@@ -531,7 +531,14 @@ class Parser {
 			var endIndex = startIndex;
 			if(blockIdent != null) {
 				while(!ended) {
-					if(lastLineNumber != lineNumber) {
+					if(parseNextContent(";")) {
+						parseWhitespaceOrComments();
+						if(lastLineNumber == lineNumber && !ended) {
+							exprs.push(parseNextExpression());
+							endIndex = getIndex();
+							parseWhitespaceOrComments();
+						}
+					} else if(lastLineNumber != lineNumber) {
 						lastLineNumber = lineNumber;
 						if(lineIndent == blockIdent) {
 							exprs.push(parseNextExpression());
@@ -541,13 +548,6 @@ class Parser {
 							error("Inconsistent ident", makePosition(lineStartIndex));
 						} else {
 							break;
-						}
-					} else if(parseNextContent(";")) {
-						parseWhitespaceOrComments();
-						if(lastLineNumber == lineNumber && !ended) {
-							exprs.push(parseNextExpression());
-							endIndex = getIndex();
-							parseWhitespaceOrComments();
 						}
 					} else {
 						break;
@@ -838,6 +838,49 @@ class Parser {
 
 			return params;
 		}
+		return null;
+	}
+
+	// function
+	public function parseFunctionAfterDef(nameRequired: Bool = false): Null<{ f: Function, k: FunctionKind, n: Null<String> }> {
+		final name = parseNextIdent();
+
+		if(name != null || !nameRequired) {
+			var args = parseNextFunctionArgs();
+			if(args == null) args = [];
+
+			final retType = if(findAndParseNextContent("->")) {
+				parseNextType();
+			} else {
+				null;
+			}
+
+			final expr = if(findAndCheckAhead(":")) {
+				parseBlock();
+			} else if(findAndParseNextContent("=")) {
+				parseWhitespaceOrComments();
+				final result = parseNextExpression();
+				findAndParseNextContent(";");
+				result;
+			} else if(findAndParseNextContent(";")) {
+				null;
+			} else {
+				null;
+			}
+
+			return {
+				f: {
+					args: args,
+					ret: retType,
+					expr: expr
+				},
+				k: name != null ? FunctionKind.FNamed(name.ident) : FunctionKind.FAnonymous,
+				n: name != null ? name.ident : null
+			};
+		} else {
+			errorHere("Expected function name");
+		}
+
 		return null;
 	}
 }
