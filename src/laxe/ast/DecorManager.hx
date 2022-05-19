@@ -71,7 +71,7 @@ class DecorManager {
 								pos: d.targetExpr.pos
 							});
 							if(result != null) {
-								ensureCompileTimePosition(result);
+								PositionFixer.expr(result);
 								d.targetExpr.expr = result.expr;
 								d.targetExpr.pos = result.pos;
 							}
@@ -82,9 +82,7 @@ class DecorManager {
 						if(decor.onTypeDef != null) {
 							final result: LaxeTypeDefinition = decor.onTypeDef(Reflect.copy(d.targetTypeDef));
 							if(result != null) {
-								for(e in result.getAllExpr()) {
-									ensureCompileTimePosition(e);
-								}
+								PositionFixer.typeDef(result);
 								d.targetTypeDef.pack = result.pack;
 								d.targetTypeDef.name = result.name;
 								d.targetTypeDef.doc = result.doc;
@@ -104,13 +102,6 @@ class DecorManager {
 				}
 			}
 		}
-	}
-
-	function ensureCompileTimePosition(e: Dynamic): Expr {
-		if(Type.getClassName(Type.getClass(e.pos)) == null) {
-			e.pos = Context.makePosition(cast e.pos);
-		}
-		return haxe.macro.ExprTools.map(e, ensureCompileTimePosition);
 	}
 }
 

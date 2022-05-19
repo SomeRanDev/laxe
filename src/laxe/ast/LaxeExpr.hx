@@ -11,7 +11,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 	}
 
 	// convert to laxe code string
-	public inline function toString() {
+	public function toString() {
 		return switch(this.expr) {
 			case EBlock(exprs): {
 				"block:\n" + blockToString(exprs);
@@ -70,12 +70,12 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	static inline function normalExprToString(e: Expr) {
+	static function normalExprToString(e: Expr) {
 		final le: LaxeExpr = e;
 		return le.toString();
 	}
 
-	static inline function possiblyBlockToString(expr: Expr) {
+	static function possiblyBlockToString(expr: Expr) {
 		return switch(expr.expr) {
 			case EBlock(exprs): blockToString(exprs);
 			case _: "\t" + normalExprToString(expr);

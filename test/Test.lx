@@ -156,6 +156,7 @@ def main:
 	# create class
 	mut cls = new Sponge();
 	cls.hello();
+	trace("Added using decor meta var: " + cls.asd);
 
 	# create generic class
 	new GenericClass<int>(123);
@@ -228,6 +229,7 @@ decor AddFour:
 
 # type-def decor
 decor RenameToSponge:
-	def onTypeDef(original: dyn) -> dyn:
+	def onTypeDef(original: typeDef) -> typeDef:
 		original.name = "Sponge";
+		original.addVar("asd", template expr: 0);
 		return original;

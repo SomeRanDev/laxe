@@ -92,8 +92,9 @@ function evalTrace(d: Dynamic, pos: Null<{ file: String, min: Int, max: Int }> =
 }
 
 @:nullSafety(Strict)
+@:exclude
 inline function sanitizePositions(e: { expr: haxe.macro.Expr.ExprDef, pos: Dynamic }) {
-	#if 
+	#if macro
 	return {
 		expr: e.expr,
 		pos: Context.makePosition(e.pos)

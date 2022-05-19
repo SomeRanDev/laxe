@@ -235,12 +235,19 @@ class ValueParser {
 	public function parseNextIdentifier(): Null<Expr> {
 		final result = parser.parseNextIdent();
 
-		if(result != null && result.ident == "expr") {
-			final e = macro laxe.ast.LaxeExpr;
-			return {
-				expr: e.expr,
-				pos: result.pos
-			};
+		if(result != null) {
+			final e = switch(result.ident) {
+				case "expr": macro laxe.ast.LaxeExpr;
+				case "typeDef": macro laxe.ast.LaxeTypeDefinition;
+				case "field": macro laxe.ast.LaxeField;
+				case _: null;
+			}
+			if(e != null) {
+				return {
+					expr: e.expr,
+					pos: result.pos
+				};
+			}
 		}
 
 		return result == null ? null : {
