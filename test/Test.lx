@@ -190,6 +190,10 @@ def main:
 
 	trace(template type: a.$myStr<Int, String>);
 
+	@CheckIfBlock
+	block:
+		trace("end of everything");
+
 # args and return types
 def doMath(a: int, b: int) -> int:
 	# return 
@@ -238,6 +242,12 @@ decor AddFour:
 	def onExpr(original: expr) -> expr:
 		return template expr: block:
 			$original + 54;
+
+decor CheckIfBlock:
+	def onExpr(o: expr) -> expr:
+		if o.isBlock():
+			trace("is a block");
+		return o;
 
 # type-def decor
 decor RenameToSponge:

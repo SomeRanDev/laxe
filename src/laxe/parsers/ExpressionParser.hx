@@ -177,6 +177,7 @@ class ExpressionParser {
 			if(macroIdent != null) {
 				final exprIdent = p.tryParseIdent("expr");
 				if(exprIdent != null) {
+					final startTemplateIndex = p.getIndex();
 					p.startTemplate();
 					var le: LaxeExpr = p.parseBlock();
 					p.endTemplate();
@@ -190,17 +191,20 @@ class ExpressionParser {
 					}
 					final pos = Context.makePosition({ file: p.filePath, min: 0, max: 0});
 					final reifExpr = Context.parse("macro " + le.toHaxeString(), pos);
+					convertTemplatePositions(reifExpr, p.filePath, startTemplateIndex);
 					return reifExpr;
 				} else {
 					final typeIdent = p.tryParseIdent("type");
 					if(typeIdent != null) {
 						p.findAndParseNextContent(":");
+						final startTemplateIndex = p.getIndex();
 						p.startTemplate();
 						var path: ComplexType = p.parseNextType();
 						p.endTemplate();
 						if(path != null) {
 							final pos = Context.makePosition({ file: p.filePath, min: 0, max: 0});
 							final reifExpr = Context.parse("macro : " + haxe.macro.ComplexTypeTools.toString(path), pos);
+							convertTemplatePositions(reifExpr, p.filePath, startTemplateIndex);
 							return reifExpr;
 						} else {
 							p.errorHere("Expected type path");
@@ -744,6 +748,46 @@ class ExpressionParser {
 			expr: exprDef,
 			pos: p.mergePos(op, e.pos)
 		};
+	}
+
+	static function convertTemplatePositions(originalExpr: Expr, fp: String, startTemplateIndex: Int): Expr {
+		function map(e: Expr): Expr {
+			switch(e.expr) {
+				case EObjectDecl(fields): {
+					for(field in fields) {
+						if(field.field == "pos") {
+							switch(field.expr.expr) {
+								case EObjectDecl(fields2): {
+									for(f2 in fields2) {
+										if(f2.field == "file") {
+											f2.expr = macro $v{fp};
+										} else if(f2.field == "min" || f2.field == "max") {
+											var num = -1;
+											switch(f2.expr.expr) {
+												case EConst(CInt(n)): {
+													num = Std.parseInt(n);
+												}
+												case _:
+											}
+											if(num != -1) {
+												final newIndex = startTemplateIndex + num;
+												f2.expr = macro $v{newIndex};
+											}
+											
+										}
+									}
+								}
+								case _:
+							}
+						}
+					}
+				}
+				case _:
+			}
+			return haxe.macro.ExprTools.map(e, map);
+		}
+
+		return map(originalExpr);
 	}
 }
 
