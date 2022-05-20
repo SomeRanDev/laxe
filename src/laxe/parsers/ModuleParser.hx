@@ -121,6 +121,14 @@ class ModuleParser {
 					continue;
 				}
 			}
+
+			{
+				final member = parseWrapper();
+				if(member != null) {
+					members.push({ member: member, metadata: metadata });
+					continue;
+				}
+			}
 		}
 	}
 
@@ -497,6 +505,62 @@ class ModuleParser {
 		return null;
 	}
 
+	function parseWrapper(): Null<LaxeModuleMember> {
+		final state = p.saveParserState();
+		final startIndex = p.getIndex();
+		final startIndent = p.getIndent();
+
+		final wrapperIdent = p.tryParseIdent("wrapper");
+		if(wrapperIdent != null) {
+			final name = p.parseNextIdent();
+			if(name != null) {
+				final params = p.parseTypeParamDecls();
+
+				final superType = if(p.tryParseIdent("extends") != null) {
+					p.parseNextType();
+				} else {
+					p.errorHere("Expected 'extends' keyword");
+					return null;
+				}
+
+				final from = [];
+				final to = [];
+				while(true) {
+					if(p.tryParseIdent("from") != null) {
+						final fromType = p.parseNextType();
+						if(fromType != null) {
+							from.push(fromType);
+						} else {
+							p.errorHere("Expected from type");
+						}
+					} else if(p.tryParseIdent("to") != null) {
+						final toType = p.parseNextType();
+						if(toType != null) {
+							to.push(toType);
+						} else {
+							p.errorHere("Expected to type");
+						}
+					} else {
+						break;
+					}
+				}
+
+				final fields = parseClassFields(startIndent);
+
+				final meta = [];
+
+				final tdAbstract = TDAbstract(superType, from, to);
+				return Class(name.ident, p.makePosition(startIndex), meta, params, tdAbstract, fields);
+			} else {
+				p.errorHere("Expected class name");
+			}
+		} else {
+			p.restoreParserState(state);
+		}
+
+		return null;
+	}
+		
 	function parseDecor(metadata: Parser.Metadata): Bool {
 		final state = p.saveParserState();
 

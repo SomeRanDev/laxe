@@ -190,6 +190,10 @@ def main:
 
 	trace(template type: a.$myStr<Int, String>);
 
+	# wrapper (abstract from haxe)
+	let supNum: SuperNumber = 1001;
+	supNum.printSelf();
+
 	@CheckIfBlock
 	block:
 		trace("end of everything");
@@ -254,8 +258,14 @@ decor RenameToSponge:
 	def onTypeDef(original: typeDef) -> typeDef:
 		original.name = "Sponge";
 		original.addVar("asd", template expr: 0);
-		original.addFunction(template expr:
-			def bla():
-				trace("we are within bla");
+		original.addFunction(template expr: def bla():
+			trace("we are within bla");
 		);
 		return original;
+
+wrapper SuperNumber extends Int from Int to Int:
+	inline def new(value: Int):
+		this = value;
+
+	inline def printSelf():
+		trace("printing from SuperNumber: " + this);
