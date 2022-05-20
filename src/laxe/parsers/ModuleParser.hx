@@ -19,6 +19,7 @@ enum LaxeModuleMember {
 	Variable(name: String, pos: Position, meta: Array<MetadataEntry>, type: FieldType, access: Array<Access>);
 	Function(name: String, pos: Position, meta: Array<MetadataEntry>, type: FieldType, access: Array<Access>);
 	Class(name: String, pos: Position, meta: Array<MetadataEntry>, params: Null<Array<TypeParamDecl>>, kind: TypeDefKind, fields: Array<Field>);
+	TypeAlias(name: String, pos: Position, meta: Array<MetadataEntry>, params: Null<Array<TypeParamDecl>>, alias: ComplexType);
 }
 
 @:nullSafety(Strict)
@@ -124,6 +125,14 @@ class ModuleParser {
 
 			{
 				final member = parseWrapper();
+				if(member != null) {
+					members.push({ member: member, metadata: metadata });
+					continue;
+				}
+			}
+
+			{
+				final member = parseTypeAlias();
 				if(member != null) {
 					members.push({ member: member, metadata: metadata });
 					continue;
@@ -287,6 +296,17 @@ class ModuleParser {
 					fields: fields
 				};
 			}
+			case TypeAlias(name, pos, meta, params, type): {
+				typeDef = {
+					pos: pos,
+					pack: [],
+					name: name,
+					meta: metadata.string != null ? meta.concat(metadata.string) : meta,
+					params: params,
+					kind: TDAlias(type),
+					fields: []
+				};
+			}
 		}
 		if(typeDef != null) {
 			if(metadata.typed != null) {
@@ -303,7 +323,8 @@ class ModuleParser {
 		return switch(member) {
 			case Variable(_, pos, _, _, _) |
 				Function(_, pos, _, _, _) |
-				Class(_, pos, _, _, _): pos;
+				Class(_, pos, _, _, _) |
+				TypeAlias(_, pos, _, _, _): pos;
 		}
 	}
 
@@ -560,7 +581,45 @@ class ModuleParser {
 
 		return null;
 	}
-		
+
+	function parseTypeAlias(): Null<LaxeModuleMember> {
+		final state = p.saveParserState();
+		final startIndex = p.getIndex();
+		final startIndent = p.getIndent();
+
+		final aliasIdent = p.tryParseIdent("alias");
+		if(aliasIdent != null) {
+			final typeIdent = p.tryParseIdent("type");
+			if(typeIdent != null) {
+				final name = p.parseNextIdent();
+				if(name != null) {
+					final params = p.parseTypeParamDecls();
+
+					if(p.findAndParseNextContent("=")) {
+						final type = p.parseNextType();
+						p.findAndParseNextContent(";");
+						if(type != null) {
+							final meta = [];
+							return TypeAlias(name.ident, p.makePosition(startIndex), meta, params, type);
+						} else {
+							p.errorHere("Expected type");
+						}
+					} else {
+						p.errorHere("Expected '='");
+					}
+				} else {
+					p.errorHere("Expected alias name");
+				}
+			} else {
+				p.errorHere("Expected 'type' or 'decor' keyword here");
+			}
+		} else {
+			p.restoreParserState(state);
+		}
+
+		return null;
+	}
+	
 	function parseDecor(metadata: Parser.Metadata): Bool {
 		final state = p.saveParserState();
 

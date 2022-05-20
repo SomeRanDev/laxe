@@ -194,6 +194,15 @@ def main:
 	let supNum: SuperNumber = 1001;
 	supNum.printSelf();
 
+	# type alias
+	let num: Number = 100000;
+
+	let p = new Point(100, 200);
+	trace(p.toString());
+
+	let p2 = new Point("abc", "xyz");
+	trace(p2.toString());
+
 	@CheckIfBlock
 	block:
 		trace("end of everything");
@@ -269,3 +278,6 @@ wrapper SuperNumber extends Int from Int to Int:
 
 	inline def printSelf():
 		trace("printing from SuperNumber: " + this);
+
+alias type Number = Int;
+alias type Point<T> = (T, T);
