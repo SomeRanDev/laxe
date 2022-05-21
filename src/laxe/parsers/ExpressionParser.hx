@@ -19,6 +19,24 @@ import laxe.ast.Operators.IntervalOperator;
 import laxe.ast.LaxeExpr;
 
 class ExpressionParser {
+	static var macroReifReplacements: Array<Map<String, String>> = [];
+	static var macroReifReplacer: Null<Map<String, String>> = null;
+
+	static function initReifReplacer() {
+		macroReifReplacer = [];
+		macroReifReplacements.push(macroReifReplacer);
+	}
+
+	static function endReifReplacer() {
+		final result = macroReifReplacer;
+		macroReifReplacer = if(macroReifReplacements.length > 0) {
+			macroReifReplacements.pop();
+		} else {
+			null;
+		};
+		return result;
+	}
+
 	static function stringToUnop(s: String): Null<Unop> {
 		return switch(s) {
 			case "++": OpIncrement;
@@ -170,7 +188,9 @@ class ExpressionParser {
 			}
 		}
 
-		// macro
+		// ***************************************
+		// * Template Expressions
+		// ***************************************
 		{
 			final save = p.saveParserState();
 			final macroIdent = p.tryParseIdent("template");
@@ -178,9 +198,13 @@ class ExpressionParser {
 				final exprIdent = p.tryParseIdent("expr");
 				if(exprIdent != null) {
 					final startTemplateIndex = p.getIndex();
+
+					initReifReplacer();
 					p.startTemplate();
 					var le: LaxeExpr = p.parseBlock();
 					p.endTemplate();
+					final replacements = endReifReplacer();
+
 					switch(le.expr) {
 						case EBlock(exprs): {
 							if(exprs.length == 1) {
@@ -190,7 +214,20 @@ class ExpressionParser {
 						case _:
 					}
 					final pos = Context.makePosition({ file: p.filePath, min: 0, max: 0});
-					final reifExpr = Context.parse("macro " + le.toHaxeString(), pos);
+
+					final haxeStr = le.toHaxeString();
+
+					// Instead of trying to find a one-size-fits-all regex,
+					// we track the required replacements using "reifReplacers".
+					// A bit of a hack, but it works.
+					//final haxeMacroStr = ~/@__dollar_(\w+)__\(([\w\d, ]+)\) 0/ig.replace(haxeStr, "$$$1{$2}");
+
+					var haxeMacroStr = haxeStr;
+					for(check => replace in replacements) {
+						haxeMacroStr = StringTools.replace(haxeMacroStr, check, replace);
+					}
+
+					final reifExpr = Context.parse("macro " + haxeMacroStr, pos);
 					convertTemplatePositions(reifExpr, p.filePath, startTemplateIndex);
 					return reifExpr;
 				} else {
@@ -589,7 +626,6 @@ class ExpressionParser {
 				}
 			}
 		}
-		//parseFunctionAfterDef
 
 		// ***************************************
 		// * Value (Ident, Int, Float, String, Array, Struture, etc.)
@@ -609,6 +645,35 @@ class ExpressionParser {
 		p.parseWhitespaceOrComments();
 
 		final startIndex = p.getIndex();
+
+		// ***************************************
+		// * Macro Reification Special Inputs
+		// ***************************************
+		if(p.isTemplate) {
+			switch(e.expr) {
+				case EConst(CIdent(c)) if(StringTools.startsWith(c, "$")): {
+					if(p.parseNextContent("{")) {
+						final exprs = p.parseNextExpressionList("}");
+						final pos = p.makePosition(startIndex);
+
+						final cn = c.substr(1);
+						final metaName = '__dollar_${cn}__';
+						final metaParams = exprs.map(e -> (e : LaxeExpr).toHaxeString()).join(", ");
+						macroReifReplacer.set('@$metaName($metaParams) 0', '$$$cn{$metaParams}');
+
+						return {
+							expr: EMeta({
+								name: metaName,
+								pos: pos,
+								params: exprs
+							}, macro 0),
+							pos: pos
+						};
+					}
+				}
+				case _:
+			}
+		}
 
 		// ***************************************
 		// * OpInterval
@@ -689,6 +754,28 @@ class ExpressionParser {
 				expr: ECall(e, exprs),
 				pos: pos
 			});
+		}
+
+		// ***************************************
+		// * Array Access Operator
+		// ***************************************
+		if(p.parseNextContent("[")) {
+			final exprs = p.parseNextExpressionList("]");
+			final pos = p.makePosition(startIndex);
+
+			if(exprs.length == 0) {
+				p.error("Expected expression within '[ ]'", p.makePosition(startIndex));
+			} else if(exprs.length == 1) {
+				return post_expr(p, {
+					expr: EArray(e, exprs[0]),
+					pos: pos
+				});
+			} else {
+				return post_expr(p, {
+					expr: ECall(macro $e.arrayAccess, exprs),
+					pos: pos
+				});
+			}
 		}
 
 		// ***************************************

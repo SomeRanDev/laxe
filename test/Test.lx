@@ -133,6 +133,13 @@ def main:
 	
 	localFunc2("!@#$%^");
 
+	# arrays
+	var myArray = [8008, 9009, 100010];
+	trace("myArray[1] is " + myArray[1]);
+
+	let aa = new ArrayAccessMe();
+	aa[12, 24];
+
 	# tuples
 	var t: (int, int, int) = (1, 2, 3);
 	trace(t);
@@ -181,7 +188,8 @@ def main:
 
 	# test decor
 	trace(@AddThree 0);
-	trace(@AddFour 100);
+	#trace(@AddFour 100);
+	@AddFour 0;
 	trace(@Another.AndMore "Dinosaurs");
 
 	# using
@@ -232,6 +240,12 @@ class ClassTest:
 		trace("Hello from ClassTest!");
 		return "test";
 
+# array access class
+class ArrayAccessMe:
+	def new: pass
+	def arrayAccess(one: int, two: int):
+		trace("multiple array access of: " + one + " and " + two);
+
 # generic class
 class GenericClass<T>:
 	def new(value: T):
@@ -253,8 +267,13 @@ decor AddThree:
 # expr decor
 decor AddFour:
 	def onExpr(original: expr) -> expr:
+		let a = 123;
+		let es = [original];
 		return template expr: block:
-			$original + 54;
+			trace($v{a});
+			trace("another thing");
+
+			#$original + 54;
 
 decor CheckIfBlock:
 	def onExpr(o: expr) -> expr:

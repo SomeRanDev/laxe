@@ -58,6 +58,11 @@ class Parser {
 	public var ended(default, null): Bool = false;
 	public var lineNumber(default, null): Int = 0;
 
+	var nextIdentifier: String = "";
+	var nextIdentifierPos: Null<Position> = null;
+	var nextIdentifierIndex: Int = -1;
+	var nextIdentifierEndIndex: Int = -1;
+
 	var module: ModuleParser;
 
 	var lineStartIndex: Int = 0;
@@ -65,7 +70,7 @@ class Parser {
 	var lastParsedWhitespaceIndex: Int = -1;
 	var touchedContentOnThisLine: Bool = false;
 
-	var isTemplate: Bool;
+	public var isTemplate(default, null): Bool;
 
 	var forcedPos: Null<Position> = null;
 
@@ -382,6 +387,12 @@ class Parser {
 	public function parseNextIdent(): Null<StringAndPos> {
 		parseWhitespaceOrComments();
 		final startIndex = getIndex();
+
+		if(startIndex == nextIdentifierIndex) {
+			index = nextIdentifierEndIndex;
+			@:nullSafety(Off) return { ident: nextIdentifier, pos: nextIdentifierPos };
+		}
+
 		var result = null;
 		if(isIdentCharStarter(currentCharCode())) {
 			result = "";
@@ -392,7 +403,15 @@ class Parser {
 				}
 			}
 		}
-		return result == null ? null : { ident: result, pos: makePosition(startIndex) };
+
+		final pos = makePosition(startIndex);
+
+		nextIdentifier = result;
+		nextIdentifierPos = pos;
+		nextIdentifierIndex = startIndex;
+		nextIdentifierEndIndex = index;
+
+		return result == null ? null : { ident: result, pos: pos };
 	}
 
 	public function parseNextIdentOrElse(): StringAndPos {
@@ -405,6 +424,13 @@ class Parser {
 	}
 
 	public function tryParseIdent(ident: String): Null<StringAndPos> {
+		if(index == nextIdentifierIndex) {
+			if(ident == nextIdentifier) {
+				@:nullSafety(Off)
+				index = nextIdentifierEndIndex;
+				return { ident: nextIdentifier, pos: nextIdentifierPos };
+			}
+		}
 		final state = saveParserState();
 		final identAndPos = parseNextIdent();
 		if(identAndPos != null && identAndPos.ident == ident) {

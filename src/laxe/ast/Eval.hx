@@ -25,15 +25,16 @@ package laxe.ast;
 // IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 // CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+import haxe.macro.Expr;
+
 #if (macro || laxeRuntime)
 
-import haxe.macro.Expr;
 import haxe.macro.Context;
 
 // This eval hack is unable to run `trace` normally.
 // So instead, instances of `trace` are replaced with the `evalTrace` function.
 @:nullSafety(Strict)
-function convertTraceToExprTrace(e: Expr) {
+function convertSpecialCalls(e: Expr) {
 	switch(e.expr) {
 		case ECall({ expr: EConst(CIdent("trace")), pos: p }, params): {
 			// get new identifier for trace
@@ -50,14 +51,40 @@ function convertTraceToExprTrace(e: Expr) {
 				pos: e.pos
 			}
 		}
+		case ECall({
+			expr: EField({
+				expr: EField(e, "Context"),
+				pos: p1
+			}, funcName), pos: p2
+		}, params): {
+			// get new identifier for makeExpr
+			final p = e.pos;
+			final ident = if(funcName == "makeExpr") {
+				macro @:pos(p) laxe.ast.Eval.evalMakeExpr;
+			} else if(funcName == "makePosition") {
+				macro @:pos(p) laxe.ast.Eval.evalMakePosition;
+			} else {
+				null;
+			}
+
+			final newParams = params.map(p -> convertSpecialCalls(p));
+
+			// generate new expression
+			if(ident != null) {
+				return {
+					expr: ECall(ident, newParams),
+					pos: e.pos
+				}
+			}
+		}
 		case _:
 	}
-	return haxe.macro.ExprTools.map(e, convertTraceToExprTrace);
+	return haxe.macro.ExprTools.map(e, convertSpecialCalls);
 }
-
+//evalMakeExpr
 @:nullSafety(Strict)
 function exprToFunction(e: Expr): Dynamic {
-	final newE = haxe.macro.ExprTools.map(e, convertTraceToExprTrace);
+	final newE = haxe.macro.ExprTools.map(e, convertSpecialCalls);
 	Context.typeof(macro laxe.ast.Eval._storeFunction(function() return $newE));
 	@:nullSafety(Off) return _func;
 }
@@ -88,6 +115,29 @@ function evalTrace(d: Dynamic, pos: Null<{ file: String, min: Int, max: Int }> =
 	haxe.Log.trace('${prefix}: $s', null);
 	#else
 	trace(d);
+	#end
+}
+
+@:nullSafety(Strict)
+@:exclude
+function evalMakeExpr(v: Dynamic, p: Position): Expr {
+	#if macro
+	return Context.makeExpr(v, p);
+	#else
+	return {
+		expr: EConst(CIdent("0")),
+		pos: p
+	};
+	#end
+}
+
+@:nullSafety(Strict)
+@:exclude
+function evalMakePosition(inf: { min: Int, max: Int, file: String }): Position {
+	#if macro
+	return Context.makePosition(inf);
+	#else
+	return inf;
 	#end
 }
 

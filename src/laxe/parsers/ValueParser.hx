@@ -35,7 +35,7 @@ class ValueParser {
 				case 0: result = parseNextNull();
 				case 1: result = parseNextThis();
 				case 2: result = parseNextBoolean();
-				//case 3: result = parseArrayLiteral();
+				case 3: result = parseArrayLiteral();
 				//case 4: result = parseTupleOrEnclosedLiteral();
 				case 5: result = parseNextMultilineString();
 				case 6: result = parseNextString();
@@ -174,9 +174,7 @@ class ValueParser {
 				};
 			}
 			if(invalidChars) {
-				// TODO
-				//Error.addError(ErrorType.InvalidNumericCharacters, parser, charStart);
-				//numberTypeParsed = gotDot ? Double : Int;
+				parser.warn("Invalid number characters", parser.makePosition(charStart));
 			}
 		}
 
@@ -387,12 +385,19 @@ class ValueParser {
 		return ["n", "r", "t", "v", "f", "\\", "\"", "\'"];
 	}
 
-	/*
-	public function parseArrayLiteral(): Null<Literal> {
-		final exprs = parseListType(arrayOperatorStart, arrayOperatorEnd);
-		return exprs == null ? null : List(exprs);
+	public function parseArrayLiteral(): Null<Expr> {
+		final startIndex = parser.getIndex();
+		if(parser.parseNextContent("[")) {
+			final exprs = parser.parseNextExpressionList("]");
+			return {
+				expr: EArrayDecl(exprs),
+				pos: parser.makePosition(startIndex)
+			};
+		}
+		return null;
 	}
 
+	/*
 	public function parseTupleOrEnclosedLiteral(): Null<Literal> {
 		final exprs = parseListType(tupleOperatorStart, tupleOperatorEnd);
 		if(exprs != null && exprs.length == 1) {

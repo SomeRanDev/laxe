@@ -174,7 +174,7 @@ class TypeParser {
 		return result;
 	}
 
-	static function parseTypeList(p: Parser, endChar: String, allowNames: Bool = false): Array<{ name: Null<String>, type: ComplexType }> {
+	public static function parseTypeList(p: Parser, endChar: String, allowNames: Bool = false): Array<{ name: Null<String>, type: ComplexType }> {
 		final result = [];
 
 		if(!p.findAndCheckAhead(endChar)) {

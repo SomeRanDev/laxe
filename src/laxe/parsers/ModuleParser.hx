@@ -379,6 +379,50 @@ class ModuleParser {
 							p.error('Unexpected member in $classTypeName body', getPositionFromMember(mem));
 							break;
 						}
+					} else if(classTypeName == "enum") {
+						if(p.tryParseIdent("case") != null) {
+							final caseStartIndex = p.getIndex();
+							final name = p.parseNextIdent();
+							if(name != null) {
+								if(p.findAndParseNextContent("(")) {
+									final typeList = TypeParser.parseTypeList(p, ")", true);
+									var index = 0;
+									final funcArgs = typeList.map(function(t) {
+										final result: FunctionArg = {
+											name: t.name != null ? t.name : ("_" + index),
+											type: t.type
+										};
+										index++;
+										return result;
+									});
+									fields.push({
+										name: name.ident,
+										pos: p.makePosition(caseStartIndex),
+										kind: FFun({
+											ret: null,
+											params: [],
+											expr: null,
+											args: funcArgs
+										}),
+										meta: [],
+										access: []
+									});
+								} else {
+									fields.push({
+										name: name.ident,
+										pos: p.makePosition(caseStartIndex),
+										kind: FVar(null, null),
+										meta: [],
+										access: []
+									});
+								}
+							} else {
+								p.errorHere("Expected identifier after 'case'");
+							}
+						} else {
+							p.errorHere("Expected field, function, or case");
+							break;
+						}
 					} else {
 						p.errorHere("Expected field or function");
 						break;
