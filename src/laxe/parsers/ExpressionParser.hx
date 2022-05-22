@@ -257,7 +257,7 @@ class ExpressionParser {
 		// * Variable initialization
 		// ***************************************
 		{
-			final varIdent = p.tryParseOneIdent("var", "let", "mut");
+			final varIdent = p.tryParseOneIdent("var", "const");
 			if(varIdent != null) {
 				final varName = p.parseNextIdent();
 				if(varName != null) {
@@ -280,7 +280,7 @@ class ExpressionParser {
 								type: type,
 								name: varName.ident,
 								expr: e,
-								isFinal: varIdent.ident == "let"
+								isFinal: varIdent.ident == "const"
 							}
 						]),
 						pos: pos
@@ -776,6 +776,19 @@ class ExpressionParser {
 					pos: pos
 				});
 			}
+		}
+
+		// ***************************************
+		// * as Operator
+		// ***************************************
+		if(p.tryParseIdent("as") != null) {
+			final type = p.parseNextType();
+			final pos = p.makePosition(startIndex);
+
+			return post_expr(p, {
+				expr: ECheckType(e, type),
+				pos: pos
+			});
 		}
 
 		// ***************************************

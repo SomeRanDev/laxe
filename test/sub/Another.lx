@@ -1,6 +1,14 @@
 def helloFromLaxe():
 	trace("Hello from Laxe!");
 
+	const a = Blue(123, 123) as Color;
+	switch a:
+		case Red: trace("is red");
+		case Green(s): trace("is green: " + s);
+		case _: trace("is something else");
+	
+	trace(a.toString());
+
 def helloFromAnotherModule():
 	trace("Hello from another module!");
 
@@ -11,3 +19,14 @@ class Another:
 decor AndMore:
 	def onExpr(e: expr) -> expr:
 		return expr.fromString(e.toString() + " + ' and more!'");
+
+enum Color:
+	case Red;
+	case Green(str);
+	case Blue(int, int);
+
+	def toString:
+		return switch this:
+			case Red: "red";
+			case Green(_): "green";
+			case Blue(_, _): "blue";

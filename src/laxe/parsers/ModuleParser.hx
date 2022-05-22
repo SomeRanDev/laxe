@@ -20,6 +20,7 @@ enum LaxeModuleMember {
 	Function(name: String, pos: Position, meta: Array<MetadataEntry>, type: FieldType, access: Array<Access>);
 	Class(name: String, pos: Position, meta: Array<MetadataEntry>, params: Null<Array<TypeParamDecl>>, kind: TypeDefKind, fields: Array<Field>);
 	TypeAlias(name: String, pos: Position, meta: Array<MetadataEntry>, params: Null<Array<TypeParamDecl>>, alias: ComplexType);
+	Enum(name: String, pos: Position, meta: Array<MetadataEntry>, params: Null<Array<TypeParamDecl>>, enumFields: Array<Field>, abstractFields: Array<Field>);
 }
 
 @:nullSafety(Strict)
@@ -117,6 +118,14 @@ class ModuleParser {
 
 			{
 				final member = parseClass();
+				if(member != null) {
+					members.push({ member: member, metadata: metadata });
+					continue;
+				}
+			}
+
+			{
+				final member = parseEnum(metadata);
 				if(member != null) {
 					members.push({ member: member, metadata: metadata });
 					continue;
@@ -307,6 +316,45 @@ class ModuleParser {
 					fields: []
 				};
 			}
+			case Enum(name, pos, meta, params, enumFields, abstractFields): {
+				if(abstractFields.length == 0) {
+					typeDef = {
+						pos: pos,
+						pack: [],
+						name: name,
+						meta: metadata.string != null ? meta.concat(metadata.string) : meta,
+						params: params,
+						kind: TDEnum,
+						fields: enumFields
+					};
+				} else {
+					final iType = "I" + name;
+					final cType = TPath({
+						pack: [],
+						name: iType
+					});
+
+					types.push({
+						pos: pos,
+						pack: [],
+						name: iType,
+						meta: [],
+						params: params,
+						kind: TDEnum,
+						fields: enumFields
+					});
+						
+					typeDef = {
+						pos: pos,
+						pack: [],
+						name: name,
+						meta: metadata.string != null ? meta.concat(metadata.string) : meta,
+						params: params,
+						kind: TDAbstract(cType, [cType], [cType]),
+						fields: abstractFields
+					};
+				}
+			}
 		}
 		if(typeDef != null) {
 			if(metadata.typed != null) {
@@ -324,7 +372,8 @@ class ModuleParser {
 			case Variable(_, pos, _, _, _) |
 				Function(_, pos, _, _, _) |
 				Class(_, pos, _, _, _) |
-				TypeAlias(_, pos, _, _, _): pos;
+				TypeAlias(_, pos, _, _, _) |
+				Enum(_, pos, _, _, _, _): pos;
 		}
 	}
 
@@ -404,18 +453,20 @@ class ModuleParser {
 											expr: null,
 											args: funcArgs
 										}),
-										meta: [],
+										meta: [{ name: "#isEnumCase", pos: p.noPosition() }],
 										access: []
 									});
 								} else {
+									final pos = p.makePosition(caseStartIndex);
 									fields.push({
 										name: name.ident,
-										pos: p.makePosition(caseStartIndex),
+										pos: pos,
 										kind: FVar(null, null),
-										meta: [],
+										meta: [{ name: "#isEnumCase", pos: p.noPosition() }],
 										access: []
 									});
 								}
+								p.findAndParseNextContent(";");
 							} else {
 								p.errorHere("Expected identifier after 'case'");
 							}
@@ -469,8 +520,8 @@ class ModuleParser {
 			final name = ident.ident;
 			if(name == "def") {
 				return parseFunctionAfterDef(startIndex, access);
-			} else if(name == "var" || name == "let" || name == "mut") {
-				return parseVariableAfterLet(ident, startIndex, access);
+			} else if(name == "var" || name == "const") {
+				return parseVariableAfterVar(ident, startIndex, access);
 			}
 		}
 		p.restoreParserState(state);
@@ -483,7 +534,7 @@ class ModuleParser {
 		return Function(fun.n, p.makePosition(startIndex), [], ffun, access);
 	}
 
-	function parseVariableAfterLet(varIdent: Parser.StringAndPos, startIndex: Int, access: Array<Access>): Null<LaxeModuleMember> {
+	function parseVariableAfterVar(varIdent: Parser.StringAndPos, startIndex: Int, access: Array<Access>): Null<LaxeModuleMember> {
 		final name = p.parseNextIdent();
 		if(name != null) {
 			final type = if(p.findAndParseNextContent(":")) {
@@ -500,7 +551,7 @@ class ModuleParser {
 
 			p.findAndParseNextContent(";");
 
-			final meta = if(varIdent.ident == "let") {
+			final meta = if(varIdent.ident == "const") {
 				[ { name: ":final", pos: varIdent.pos } ];
 			} else {
 				null;
@@ -562,6 +613,118 @@ class ModuleParser {
 				return Class(name.ident, p.makePosition(startIndex), meta, params, tdClass, fields);
 			} else {
 				p.errorHere("Expected class name");
+			}
+		} else {
+			p.restoreParserState(state);
+		}
+
+		return null;
+	}
+
+	function parseEnum(metadata: Parser.Metadata): Null<LaxeModuleMember> {
+		final state = p.saveParserState();
+		final startIndex = p.getIndex();
+		final startIndent = p.getIndent();
+
+		final enumIdent = p.tryParseIdent("enum");
+		if(enumIdent != null) {
+			final name = p.parseNextIdent();
+			if(name != null) {
+				final params = p.parseTypeParamDecls();
+				final fields = parseClassFields(startIndent, "enum");
+
+				final enumFields = [];
+				final abstractFields = [];
+
+				for(f in fields) {
+					var isEnumCase = -1;
+					if(f.meta != null) {
+						for(i in 0...f.meta.length) {
+							if(f.meta[i].name == "#isEnumCase") {
+								isEnumCase = i;
+								break;
+							}
+						}
+					}
+
+					if(isEnumCase == -1) {
+						abstractFields.push(f);
+					} else {
+						enumFields.push(f);
+						f.meta = f.meta.splice(isEnumCase, 1);
+					}
+				}
+
+				final selfPath = TPath({
+					pack: [],
+					name: name.ident
+				});
+
+				// This generates static fields to generate the enum values from the abstact name.
+				// Unfortunately, it causes clashes with the interior enum values.
+				// This behavior can be reenabled using @EnumBuilderFunctions
+				var addBuilders = false;
+				if(metadata.typed != null) {
+					for(m in metadata.typed) {
+						if(m.name() == "EnumBuilderFunctions") {
+							addBuilders = true;
+							metadata.typed.remove(m);
+							break;
+						}
+					}
+				}
+				if(addBuilders && abstractFields.length > 0) {
+					for(f in enumFields) {
+						final fname = f.name;
+
+						switch(f.kind) {
+							case FVar(null, null): {
+								abstractFields.push({
+									name: fname,
+									pos: f.pos,
+									kind: FProp("get", "never", selfPath, null),
+									meta: [],
+									access: [APublic, AStatic]
+								});
+
+								abstractFields.push({
+									name: "get_" + fname,
+									pos: f.pos,
+									kind: FFun({
+										args: [],
+										expr: macro return $i{"I"+name.ident}.$fname,
+										ret: selfPath
+									}),
+									meta: [],
+									access: [APublic, AStatic]
+								});
+							}
+							case FFun(fun): {
+								final ident = macro $i{"I"+name.ident}.$fname;
+								final call = {
+									expr: ECall(ident, fun.args.map(f -> macro $i{f.name})),
+									pos: ident.pos
+								};
+								abstractFields.push({
+									name: fname,
+									pos: f.pos,
+									kind: FFun({
+										args: fun.args,
+										expr: macro return $call,
+										ret: selfPath
+									}),
+									meta: [],
+									access: [APublic, AStatic]
+								});
+							}
+							case _:
+						}
+					}
+				}
+
+				return Enum(name.ident, p.makePosition(startIndex), [], params, enumFields, abstractFields);
+			} else {
+				p.errorHere("Expected enum name");
 			}
 		} else {
 			p.restoreParserState(state);

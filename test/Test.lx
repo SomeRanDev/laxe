@@ -11,7 +11,7 @@ import sub.Another.helloFromAnotherModule;
 
 using StringTools;
 
-mut globalVariable = "this is global";
+var globalVariable = "this is global";
 
 @[test](123)
 def main:
@@ -32,10 +32,10 @@ def main:
 	trace('Hello ${123}');
 
 	# variable
-	let a = 123;
+	const a = 123;
 	trace(a * 2);
 
-	mut b = "Hello";
+	var b = "Hello";
 	b += " World";
 	trace(b);
 
@@ -70,14 +70,14 @@ def main:
 	)
 
 	# random
-	let ifValue = if Math.random() < 0.33: "one";
+	const ifValue = if Math.random() < 0.33: "one";
 	elif Math.random() < 0.5: "two";
 	else: "three";
 
 	trace('randomly generated: $ifValue');
 
 	# switch
-	let s = 123;
+	const s = 123;
 	switch s:
 		case 1 | 3 | 5:
 			trace("1");
@@ -91,7 +91,7 @@ def main:
 		trace('for: $i');
 
 	# loop
-	mut a = "";
+	var a = "";
 	loop:
 		a += "a";
 		if a.length == 3:
@@ -99,7 +99,7 @@ def main:
 	trace(a);
 
 	# while
-	mut i = 1;
+	var i = 1;
 	while i <= 3:
 		trace('while: ${i++}');
 
@@ -123,7 +123,7 @@ def main:
 		trace(e);
 	
 	# expr functions
-	let localFunc1 = def(a):
+	const localFunc1 = def(a):
 		return a * 2;
 	
 	trace("this should be 6 -> " + localFunc1(3));
@@ -137,7 +137,7 @@ def main:
 	var myArray = [8008, 9009, 100010];
 	trace("myArray[1] is " + myArray[1]);
 
-	let aa = new ArrayAccessMe();
+	const aa = new ArrayAccessMe();
 	aa[12, 24];
 
 	# tuples
@@ -146,12 +146,12 @@ def main:
 	trace(t.1);
 
 	# named tuples
-	let namedTuple = returnNamedTuple();
+	const namedTuple = returnNamedTuple();
 	trace(namedTuple.b);
 
 	takeInNormalTuple(namedTuple);
 
-	let anotherNamedTuple: (b: int, c: int) = namedTuple.unnamed();
+	const anotherNamedTuple: (b: int, c: int) = namedTuple.unnamed();
 	trace(anotherNamedTuple.b);
 
 	# another function
@@ -172,7 +172,7 @@ def main:
 	trace(doMath(123, 321));
 
 	# create class
-	mut cls = new Sponge();
+	var cls = new Sponge();
 	cls.hello();
 	trace("Added using decor meta var: " + cls.asd);
 	cls.bla();
@@ -183,7 +183,7 @@ def main:
 	new GenericClass("Hello from generic class!");
 
 	# metadata
-	let rtti = haxe.rtti.Rtti.getRtti(Sponge);
+	const rtti = haxe.rtti.Rtti.getRtti(Sponge);
 	trace(rtti.meta);
 
 	# test decor
@@ -193,22 +193,22 @@ def main:
 	trace(@Another.AndMore "Dinosaurs");
 
 	# using
-	let myStr = "HelloWorld";
+	const myStr = "HelloWorld";
 	trace(myStr.replace("Hello", "Goodbye"));
 
 	trace(template type: a.$myStr<Int, String>);
 
 	# wrapper (abstract from haxe)
-	let supNum: SuperNumber = 1001;
+	const supNum: SuperNumber = 1001;
 	supNum.printSelf();
 
 	# type alias
-	let num: Number = 100000;
+	const num: Number = 100000;
 
-	let p = new Point(100, 200);
+	const p = new Point(100, 200);
 	trace(p.toString());
 
-	let p2 = new Point("abc", "xyz");
+	const p2 = new Point("abc", "xyz");
 	trace(p2.toString());
 
 	@CheckIfBlock
@@ -261,14 +261,14 @@ class TestImpl implements Blaable:
 # decorators
 decor AddThree:
 	def onExpr(original: expr) -> expr:
-		let str = original.toString();
+		const str = original.toString();
 		return expr.fromString(str + " + 3");
 
 # expr decor
 decor AddFour:
 	def onExpr(original: expr) -> expr:
-		let a = 123;
-		let es = [original];
+		const a = 123;
+		const es = [original];
 		return template expr: block:
 			trace($v{a});
 			trace("another thing");
@@ -278,7 +278,9 @@ decor AddFour:
 decor CheckIfBlock:
 	def onExpr(o: expr) -> expr:
 		if o.isBlock():
-			trace("is a block");
+			return template expr:
+				trace("is a block");
+				$o;
 		return o;
 
 # type-def decor
