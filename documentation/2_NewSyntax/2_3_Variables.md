@@ -11,4 +11,4 @@ def main:
     c = "fail"  # error: c is final variable
 ```
 
-[NEXT >>]()
+[NEXT >>](https://github.com/RobertBorghese/laxe/blob/main/documentation/2_NewSyntax/2_4_Functions.md)

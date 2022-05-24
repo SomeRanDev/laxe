@@ -8,4 +8,4 @@ def main:
     trace("same line"); trace("semi required")
 ```
 
-[NEXT >>]()
+[NEXT >>](https://github.com/RobertBorghese/laxe/blob/main/documentation/2_NewSyntax/2_3_Variables.md)

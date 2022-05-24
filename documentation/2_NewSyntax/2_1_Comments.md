@@ -19,4 +19,5 @@ It will keep going until it meets another:
 def main:
     pass
 ```
-[NEXT >>]()
+
+[NEXT >>](https://github.com/RobertBorghese/laxe/blob/main/documentation/2_NewSyntax/2_2_Semicolons.md)
