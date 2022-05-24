@@ -7,29 +7,28 @@ Here is the Laxe equivalent of the code shown on [haxe.org](https://haxe.org):
 
 ```python
 def main:
-	const playerA = { name: "Simon", move: Paper }
-	const playerB = { name: "Nicolas", move: Rock }
+  const playerA = { name: "Simon", move: Paper }
+  const playerB = { name: "Nicolas", move: Rock }
 
-	const result = switch [playerA.move, playerB.move]:
-		case [Rock, Scissors] |
-		     [Paper, Rock] |
-		     [Scissors, Paper]: Winner(playerA)
+  const result = switch [playerA.move, playerB.move]:
+    case [Rock, Scissors] |
+         [Paper, Rock] |
+         [Scissors, Paper]: Winner(playerA)
 
-		case [Rock, Paper] |
-		     [Paper, Scissors] |
-		     [Scissors, Rock]: Winner(playerB)
+    case [Rock, Paper] |
+         [Paper, Scissors] |
+         [Scissors, Rock]: Winner(playerB)
 
-		case _: Draw
+    case _: Draw
 
-	trace('result: $result')
+  trace('result: $result')
 
 alias type Player = { name: str, move: Move }
 
 enum Move:
-	case Rock
-	case Paper
-	case Scissors
+  Rock; Paper; Scissors
 
 enum Result:
-	case Winner(Player)
-	case Draw
+  Winner(Player)
+  Draw
+```

@@ -21,9 +21,9 @@ decor AndMore:
 		return expr.fromString(e.toString() + " + ' and more!'");
 
 enum Color:
-	case Red;
-	case Green(str);
-	case Blue(int, int);
+	Red;
+	Green(str);
+	Blue(int, int);
 
 	def toString:
 		return switch this:

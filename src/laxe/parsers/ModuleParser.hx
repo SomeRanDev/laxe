@@ -429,50 +429,45 @@ class ModuleParser {
 							break;
 						}
 					} else if(classTypeName == "enum") {
-						if(p.tryParseIdent("case") != null) {
-							final caseStartIndex = p.getIndex();
-							final name = p.parseNextIdent();
-							if(name != null) {
-								if(p.findAndParseNextContent("(")) {
-									final typeList = TypeParser.parseTypeList(p, ")", true);
-									var index = 0;
-									final funcArgs = typeList.map(function(t) {
-										final result: FunctionArg = {
-											name: t.name != null ? t.name : ("_" + index),
-											type: t.type
-										};
-										index++;
-										return result;
-									});
-									fields.push({
-										name: name.ident,
-										pos: p.makePosition(caseStartIndex),
-										kind: FFun({
-											ret: null,
-											params: [],
-											expr: null,
-											args: funcArgs
-										}),
-										meta: [{ name: "#isEnumCase", pos: p.noPosition() }],
-										access: []
-									});
-								} else {
-									final pos = p.makePosition(caseStartIndex);
-									fields.push({
-										name: name.ident,
-										pos: pos,
-										kind: FVar(null, null),
-										meta: [{ name: "#isEnumCase", pos: p.noPosition() }],
-										access: []
-									});
-								}
-								p.findAndParseNextContent(";");
+						final caseStartIndex = p.getIndex();
+						final name = p.parseNextIdent();
+						if(name != null) {
+							if(p.findAndParseNextContent("(")) {
+								final typeList = TypeParser.parseTypeList(p, ")", true);
+								var index = 0;
+								final funcArgs = typeList.map(function(t) {
+									final result: FunctionArg = {
+										name: t.name != null ? t.name : ("_" + index),
+										type: t.type
+									};
+									index++;
+									return result;
+								});
+								fields.push({
+									name: name.ident,
+									pos: p.makePosition(caseStartIndex),
+									kind: FFun({
+										ret: null,
+										params: [],
+										expr: null,
+										args: funcArgs
+									}),
+									meta: [{ name: "#isEnumCase", pos: p.noPosition() }],
+									access: []
+								});
 							} else {
-								p.errorHere("Expected identifier after 'case'");
+								final pos = p.makePosition(caseStartIndex);
+								fields.push({
+									name: name.ident,
+									pos: pos,
+									kind: FVar(null, null),
+									meta: [{ name: "#isEnumCase", pos: p.noPosition() }],
+									access: []
+								});
 							}
+							p.findAndParseNextContent(";");
 						} else {
-							p.errorHere("Expected field, function, or case");
-							break;
+							p.errorHere("Expected field, function, or identifier for enum case");
 						}
 					} else {
 						p.errorHere("Expected field or function");

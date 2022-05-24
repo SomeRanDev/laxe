@@ -220,6 +220,8 @@ def main:
 	const p2 = new Point("abc", "xyz");
 	trace(p2.toString());
 
+	test_haxe_example();
+
 	@CheckIfBlock
 	block:
 		trace("end of everything");
@@ -311,3 +313,31 @@ wrapper SuperNumber extends Int from Int to Int:
 
 alias type Number = Int;
 alias type Point<T> = (T, T);
+
+# ---
+
+def test_haxe_example:
+	const playerA = { name: "Simon", move: Paper }
+	const playerB = { name: "Nicolas", move: Rock }
+
+	const result = switch [playerA.move, playerB.move]:
+		case [Rock, Scissors] |
+		     [Paper, Rock] |
+		     [Scissors, Paper]: Winner(playerA)
+
+		case [Rock, Paper] |
+		     [Paper, Scissors] |
+		     [Scissors, Rock]: Winner(playerB)
+
+		case _: Draw
+
+	trace('result: $result')
+
+alias type Player = { name: str, move: Move }
+
+enum Move:
+	Rock; Paper; Scissors
+
+enum Result:
+	Winner(Player)
+	Draw
