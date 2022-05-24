@@ -222,6 +222,8 @@ def main:
 
 	test_haxe_example();
 
+	trace("tiny function works! " + tinyFunc(543, 4839));
+
 	@CheckIfBlock
 	block:
 		trace("end of everything");
@@ -233,6 +235,8 @@ def doMath(a: int, b: int) -> int:
 
 # inline function
 def anotherFunction(): trace("calling from another function");
+
+def tinyFunc(a, b) = a + b
 
 # named tuple
 def returnNamedTuple -> (a: int, b: int):

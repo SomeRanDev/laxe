@@ -26,4 +26,38 @@ def addTwoNumbers(one: int, two: int):
     trace(one + two)
 ```
 
+Function return types can be specified using `->`. Similar to argument types, the Haxe compiler will attempt to infer them otherwise.
+```python
+def getSum(one: int, two: int) -> int:
+    return one + two
+```
+
+Similar to Python, if only one expression is required for the function body, it can be placed beside the `:`:
+```python
+def getSum(one: int, two: int) -> int: return one + two
+```
+
+Function declarations that only contain a return statement can be shortened further using the `=` operator. Instead of the `:`, use `=` followed by the desired expression to be returned.
+```python
+def getSum(one: int, two: int) -> int = one + two
+```
+
+Functions can be declared as expressions:
+```python
+def main
+    def exprFunc:
+        trace("called local function")
+
+    exprFunc()
+```
+
+Functions can also be assigned to variables. In cases like this, they can be left unnamed as well.
+```python
+def main:
+    const exprFunc = def:
+        trace("called localfunction")
+
+    exprFunc
+```
+
 [NEXT >>]()

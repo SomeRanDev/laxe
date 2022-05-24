@@ -887,7 +887,10 @@ class Parser {
 				parseWhitespaceOrComments();
 				final result = parseNextExpression();
 				findAndParseNextContent(";");
-				result;
+				{
+					expr: EReturn(result),
+					pos: result.pos
+				};
 			} else if(findAndParseNextContent(";")) {
 				null;
 			} else {
