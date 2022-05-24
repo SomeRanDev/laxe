@@ -57,7 +57,7 @@ def main:
     const exprFunc = def:
         trace("called localfunction")
 
-    exprFunc
+    exprFunc()
 ```
 
 [NEXT >>]()
