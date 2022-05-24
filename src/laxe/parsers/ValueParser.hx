@@ -36,6 +36,7 @@ class ValueParser {
 				case 1: result = parseNextThis();
 				case 2: result = parseNextBoolean();
 				case 3: result = parseArrayLiteral();
+				case 4: result = parseAnonObjectLiteral();
 				//case 4: result = parseTupleOrEnclosedLiteral();
 				case 5: result = parseNextMultilineString();
 				case 6: result = parseNextString();
@@ -385,12 +386,55 @@ class ValueParser {
 		return ["n", "r", "t", "v", "f", "\\", "\"", "\'"];
 	}
 
-	public function parseArrayLiteral(): Null<Expr> {
+	function parseArrayLiteral(): Null<Expr> {
 		final startIndex = parser.getIndex();
 		if(parser.parseNextContent("[")) {
 			final exprs = parser.parseNextExpressionList("]");
 			return {
 				expr: EArrayDecl(exprs),
+				pos: parser.makePosition(startIndex)
+			};
+		}
+		return null;
+	}
+
+	function parseAnonObjectLiteral(): Null<Expr> {
+		final startIndex = parser.getIndex();
+		if(parser.parseNextContent("{")) {
+			final fields: Array<ObjectField> = [];
+			while(!parser.parseNextContent("}")) {
+				final ident = parser.parseNextIdent();
+				if(ident == null) {
+					parser.errorHere("Expected Identifier");
+					break;
+				} else {
+					final expr = if(parser.parseNextContent(":")) {
+						parser.parseNextExpression();
+					} else {
+						{
+							expr: EConst(CIdent(ident.ident)),
+							pos: ident.pos
+						}
+					}
+
+					fields.push({
+						field: ident.ident,
+						expr: expr
+					});
+
+					if(parser.parseNextContent(",")) {
+						continue;
+					} else if(parser.parseNextContent("}")) {
+						break;
+					} else {
+						parser.errorHere("Expected ',' or '}'");
+						break;
+					}
+				}
+			}
+
+			return {
+				expr: EObjectDecl(fields),
 				pos: parser.makePosition(startIndex)
 			};
 		}

@@ -49,6 +49,18 @@ class TypeParser {
 
 		if(p.findAndParseNextContent("{")) {
 			final typeList = parseTypeList(p, "}", true);
+			for(t in typeList) {
+				if(t.name == null) {
+					p.error("Type name expected", t.pos);
+				} else {
+					return TAnonymous(typeList.map(t -> ({
+						pos: t.pos,
+						name: t.name,
+						kind: FVar(t.type),
+						access: []
+					} : Field)));
+				}
+			}
 		}
 
 		final idents = [];
@@ -174,7 +186,7 @@ class TypeParser {
 		return result;
 	}
 
-	public static function parseTypeList(p: Parser, endChar: String, allowNames: Bool = false): Array<{ name: Null<String>, type: ComplexType }> {
+	public static function parseTypeList(p: Parser, endChar: String, allowNames: Bool = false): Array<{ name: Null<String>, type: ComplexType, pos: Null<Position> }> {
 		final result = [];
 
 		if(!p.findAndCheckAhead(endChar)) {
@@ -185,6 +197,7 @@ class TypeParser {
 					break;
 				}
 
+				final startIndex = p.getIndex();
 				final t = parseType(p);
 				if(p.findAndParseNextContent(":")) {
 					if(!allowNames) {
@@ -194,10 +207,10 @@ class TypeParser {
 							case TPath(path): path.pack.join("") + path.name;
 							case _: null;
 						}
-						result.push({ name: name, type: parseType(p) });
+						result.push({ name: name, type: parseType(p), pos: p.makePosition(startIndex) });
 					}
 				} else {
-					result.push({ name: null, type: t });
+					result.push({ name: null, type: t, pos: p.makePosition(startIndex) });
 				}
 				
 				if(p.findAndCheckAhead(endChar)) {

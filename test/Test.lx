@@ -154,6 +154,15 @@ def main:
 	const anotherNamedTuple: (b: int, c: int) = namedTuple.unnamed();
 	trace(anotherNamedTuple.b);
 
+	# anon structures
+	var anonStruct = {
+		a: 1,
+		b: 2,
+		c: 3
+	};
+
+	trace("anonStruct.b is " + anonStruct.b);
+
 	# another function
 	anotherFunction();
 
