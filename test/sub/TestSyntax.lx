@@ -1,0 +1,3 @@
+class TestSyntax implements Test.LaxeTest:
+	def test:
+		trace("fjdkslfsdj");

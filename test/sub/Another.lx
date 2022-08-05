@@ -16,6 +16,9 @@ class Another:
 	def new:
 		trace("jfdksl");
 
+	def bla:
+		pass
+
 decor AndMore:
 	def onExpr(e: expr) -> expr:
 		return expr.fromString(e.toString() + " + ' and more!'");
