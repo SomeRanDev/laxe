@@ -9,6 +9,8 @@ def main:
     pass
 ```
 
+&nbsp;
+
 ## Multiline Comments
 Unlike Python, Laxe as a specific syntax for multiline comments. They are started and ended with `###`:
 ```python
