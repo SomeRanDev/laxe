@@ -1,0 +1,15 @@
+class Semicolons extends Test.LaxeTest:
+	override def test:
+		var result = 0
+
+		;
+		;;;
+		;;;;;
+
+		result++
+		result++;
+		result++; result++
+		result++; result++;
+		result++; result++; result++; result++; result++; result++
+
+		assert(result == 12)

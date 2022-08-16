@@ -1,0 +1,10 @@
+class Variables extends Test.LaxeTest:
+	override def test:
+		var myVar = 123
+		assert(myVar == 123)
+
+		myVar = 124
+		assert(myVar == 124)
+
+		const myConst = "Hello"
+		assert(myConst == "Hello")

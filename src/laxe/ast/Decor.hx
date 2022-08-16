@@ -63,7 +63,7 @@ class Decor {
 
 			onExpr = Eval.exprToFunction(funcExpr);
 		} else {
-			p.error("onExpr function must match format (expr) -> expr? or (expr) -> void", f.pos);
+			p.error("onExpr function must match format (`expr) -> `expr? or (`expr) -> void", f.pos);
 		}
 	}
 

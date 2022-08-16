@@ -4,8 +4,16 @@ import haxe.macro.Compiler;
 #if !macro
 @:autoBuild(LaxeTestMacro.build())
 #end
-interface LaxeTest {
-	public function test(): Void;
+class LaxeTest {
+	public function test(): Void {
+		throw "test() function should be overriden in child class.";
+	}
+
+	public function assert(cond: Bool, ?pos: haxe.PosInfos) {
+		if(!cond) {
+			haxe.Log.trace(pos.className + " assert failed!", pos);
+		}
+	}
 }
 
 class Test {
@@ -17,8 +25,13 @@ function main() {
 	for(c in tests) {
 		final cls = Type.resolveClass(c);
 		final test = Type.createInstance(cls, []);
-		Reflect.callMethod(test, Reflect.getProperty(test, "test"), []);
+		try {
+			Reflect.callMethod(test, Reflect.getProperty(test, "test"), []);
+		} catch(e) {
+			trace(e);
+		}
 	}
+	trace("All tests complete!");
 }
 
 macro function getLaxeTests() {

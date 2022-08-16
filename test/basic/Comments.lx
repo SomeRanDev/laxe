@@ -1,0 +1,13 @@
+class Comments extends Test.LaxeTest:
+	override def test:
+		# This will not execute
+		# assert(false)
+
+		###
+		This will also not execute
+		assert(false)
+		###
+
+		### This is also valid ###
+		assert ### assert(false) ### (true)
+		assert( ### false ### true)

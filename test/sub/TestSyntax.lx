@@ -1,3 +1,4 @@
-class TestSyntax implements Test.LaxeTest:
-	def test:
-		trace("fjdkslfsdj");
+class TestSyntax extends Test.LaxeTest:
+	override def test:
+		#trace("fjdkslfsdj");
+		#assert(false);

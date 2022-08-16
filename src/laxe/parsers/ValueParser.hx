@@ -236,9 +236,9 @@ class ValueParser {
 
 		if(result != null) {
 			final e = switch(result.ident) {
-				case "expr": macro laxe.ast.LaxeExpr;
-				case "typeDef": macro laxe.ast.LaxeTypeDefinition;
-				case "field": macro laxe.ast.LaxeField;
+				case "`expr": macro laxe.ast.LaxeExpr;
+				case "`typeDef": macro laxe.ast.LaxeTypeDefinition;
+				case "`field": macro laxe.ast.LaxeField;
 				case _: null;
 			}
 			if(e != null) {
@@ -249,7 +249,7 @@ class ValueParser {
 			}
 		}
 
-		return result == null ? null : {
+		return result == null || result.ident == null ? null : {
 			expr: EConst(CIdent(result.ident)),
 			pos: result.pos
 		};

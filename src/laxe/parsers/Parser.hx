@@ -351,8 +351,8 @@ class Parser {
 
 	function isIdentCharStarter(c: Null<Int>): Bool {
 		if(c == null) return false;
-		// letters, underscore (95), and dollar sign (36)
-		return (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 95 || (isTemplate && c == 36);
+		// letters, underscore (95), dollar sign (36), top-left tick ` (96)
+		return (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 95 || c == 96 || (isTemplate && c == 36);
 	}
 
 	function isIdentChar(c: Null<Int>): Bool {

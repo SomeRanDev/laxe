@@ -18,6 +18,7 @@ import laxe.ast.Operators.IntervalOperator;
 
 import laxe.ast.LaxeExpr;
 
+@:nullSafety(Strict)
 class ExpressionParser {
 	static var macroReifReplacements: Array<Map<String, String>> = [];
 	static var macroReifReplacer: Null<Map<String, String>> = null;
@@ -551,7 +552,7 @@ class ExpressionParser {
 				final e = maybeExpr(p);
 				return {
 					expr: EReturn(e),
-					pos: p.mergePos(returnKey.pos, e.pos)
+					pos: e != null ? (p.mergePos(returnKey.pos, e.pos)) : (returnKey.pos)
 				};
 			}
 		}

@@ -6,8 +6,6 @@ def helloFromLaxe():
 		case Red: trace("is red");
 		case Green(s): trace("is green: " + s);
 		case _: trace("is something else");
-	
-	trace(a.toString());
 
 def helloFromAnotherModule():
 	trace("Hello from another module!");
@@ -20,8 +18,8 @@ class Another:
 		pass
 
 decor AndMore:
-	def onExpr(e: expr) -> expr:
-		return expr.fromString(e.toString() + " + ' and more!'");
+	def onExpr(e: `expr) -> `expr:
+		return `expr.fromString(e.toString() + " + ' and more!'");
 
 enum Color:
 	Red;

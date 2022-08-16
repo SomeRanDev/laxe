@@ -1,0 +1,22 @@
+class Functions extends Test.LaxeTest:
+	pub override def test:
+		assert(myFunction() == 10)
+		assert(myFunction2() == "Goodbye")
+		assert(add(12, 18) == 30)
+		assert(mult(2.5, 4) == 10)
+		testReturn(self)
+
+def myFunction:
+	return 10
+
+def myFunction2 -> str:
+	return "Goodbye"
+
+def add(one: int, two: int):
+	return one + two
+
+def mult(one: float, two: float) = one * two
+
+def testReturn(a: Functions):
+	return
+	#a.assert(false) # This will never run

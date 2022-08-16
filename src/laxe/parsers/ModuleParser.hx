@@ -11,6 +11,7 @@ import haxe.macro.Expr;
 
 import laxe.ast.Decor;
 import laxe.ast.DecorManager;
+import laxe.ast.ResolveDefaultValue;
 
 import laxe.parsers.Parser;
 
@@ -58,7 +59,10 @@ class ModuleParser {
 		importedModules = [];
 		importedDecors = [];
 
-		final content = File.getContent(filePath);
+		var content = File.getContent(filePath);
+		if(!StringTools.endsWith(content, "\n")) {
+			content += "\n";
+		}
 
 		decorManager = new DecorManager();
 
@@ -401,6 +405,8 @@ class ModuleParser {
 	function parseClassFields(startIndent: String, classTypeName: String = "class"): Array<Field> {
 		final fields = [];
 
+		final isClass = classTypeName == "class";
+
 		if(p.findAndParseNextContent(";")) {
 		} else if(p.findAndParseNextContent(":")) {
 			final currentLine = p.lineNumber;
@@ -484,6 +490,20 @@ class ModuleParser {
 	static function convertModuleMemberToField(m: LaxeModuleMember): Null<Field> {
 		return switch(m) {
 			case Variable(name, pos, meta, type, access): {
+				// If no default value assigned, set one if the type has one.
+				// Otherwise, Haxe will default all types to null.
+				switch(type) {
+					case FVar(t, e): {
+						if(t != null && e == null) {
+							final newExpr = ResolveDefaultValue(t);
+							if(newExpr != null) {
+								type = FVar(t, newExpr);
+							}
+						}
+					}
+					case _:
+				}
+
 				{
 					name: name,
 					pos: pos,
