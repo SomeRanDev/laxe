@@ -15,6 +15,7 @@ class Decor {
 
 	public var onExpr(default, null): Null<(Expr) -> Expr> = null;
 	public var onTypeDef(default, null): Null<(TypeDefinition) -> TypeDefinition> = null;
+	public var onField(default, null): Null<(Field) -> Field> = null;
 
 	public function new(p: laxe.parsers.Parser, name: String, fields: Array<Field>, metadata: laxe.parsers.Parser.Metadata) {
 		this.p = p;
@@ -46,6 +47,7 @@ class Decor {
 		switch(f.name) {
 			case "onExpr": setOnExpr(f, fun);
 			case "onTypeDef": setOnTypeDef(f, fun);
+			case "onField": setOnField(f, fun);
 		}
 	}
 
@@ -79,6 +81,20 @@ class Decor {
 		};
 
 		onTypeDef = Eval.exprToFunction(funcExpr);
+	}
+
+	function setOnField(f: Field, fun: Function) {
+		if(onField != null) {
+			p.error("Duplicate onField function", f.pos);
+			return;
+		}
+
+		final funcExpr = {
+			expr: EFunction(FNamed(f.name, false), fun),
+			pos: f.pos
+		};
+
+		onField = Eval.exprToFunction(funcExpr);
 	}
 
 	function isComplexTypeExpr(c: Null<ComplexType>) {

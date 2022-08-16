@@ -1,0 +1,22 @@
+class Switches extends Test.LaxeTest:
+	override def test:
+		switch 12:
+			case 12: assert(true)
+			case _: assert(false)
+
+		const str = "SomeString"
+		assert(switch str:
+			case "Something": false
+			case "SomeString": true
+			case "Blah": false
+			case _: false)
+
+		const rps = ["Rock", "Paper"]
+		const result = switch rps:
+			case ["Rock", "Paper"] | ["Paper", "Scissors"] | ["Scissors", "Rock"]:
+				false
+			case ["Paper", "Rock"] | ["Scissors", "Paper"] | ["Rock", "Scissors"]:
+				true
+			case _:
+				null
+		assert(result == false)

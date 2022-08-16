@@ -1,0 +1,13 @@
+class Primitives extends Test.LaxeTest:
+	override def test:
+		const a: int = 123
+		assert(a == 123)
+
+		const b: float = 32.1
+		assert(b == 32.1)
+
+		const c: bool = true
+		assert(c)
+
+		const d: str = "MyString"
+		assert(d.length == 8)

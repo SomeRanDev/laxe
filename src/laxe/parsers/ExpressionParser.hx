@@ -110,7 +110,7 @@ class ExpressionParser {
 		var opLength = 0;
 		var result: Null<Operator> = null;
 		for(op in operators) {
-			if(parser.checkAhead(op.op)) {
+			if(op.check(parser)) {
 				if(opLength < op.op.length) {
 					opLength = op.op.length;
 					result = op;

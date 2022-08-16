@@ -16,6 +16,7 @@ class DecorPointer {
 
 	public var targetExpr(default, null): Null<Expr> = null;
 	public var targetTypeDef(default, null): Null<TypeDefinition> = null;
+	public var targetField(default, null): Null<Field> = null;
 
 	public function new(path: TypePath, pos: Position, params: Null<Array<Expr>>) {
 		this.path = path;
@@ -29,6 +30,10 @@ class DecorPointer {
 
 	public function setTypeDef(t: TypeDefinition) {
 		targetTypeDef = t;
+	}
+
+	public function setField(f: Field) {
+		targetField = f;
 	}
 
 	public function name() {
@@ -76,7 +81,7 @@ class DecorManager {
 								d.targetExpr.pos = result.pos;
 							}
 						} else {
-							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onExpr(expr) -> expr method', d.pos);
+							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onExpr(`expr) -> `expr method', d.pos);
 						}
 					} else if(d.targetTypeDef != null) {
 						if(decor.onTypeDef != null) {
@@ -94,7 +99,22 @@ class DecorManager {
 								d.targetTypeDef.fields = result.fields;
 							}
 						} else {
-							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onTypeDef(haxe.macro.TypeDefinition) -> haxe.macro.TypeDefinition method', d.pos);
+							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onTypeDef(`typeDef) -> `typeDef method', d.pos);
+						}
+					} else if(d.targetField != null) {
+						if(decor.onField != null) {
+							final result: LaxeField = decor.onField(Reflect.copy(d.targetField));
+							if(result != null) {
+								PositionFixer.field(result);
+								d.targetField.pos = result.pos;
+								d.targetField.name = result.name;
+								d.targetField.meta = result.meta;
+								d.targetField.kind = result.kind;
+								d.targetField.doc = result.doc;
+								d.targetField.access = result.access;
+							}
+						} else {
+							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onField(`field) -> `field method', d.pos);
 						}
 					}
 				} else {

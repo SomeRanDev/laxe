@@ -1,0 +1,13 @@
+class DynamicTyping extends Test.LaxeTest:
+	override def test:
+		var d: dyn = null
+		assert(d == null)
+
+		d = 43
+		assert(d == 43)
+
+		d = "Blah"
+		assert(d == "Blah")
+
+		var a: any = d
+		assert(a == "Blah")

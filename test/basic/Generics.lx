@@ -1,0 +1,16 @@
+class Generics extends Test.LaxeTest:
+	override def test:
+		const num = new Box(10)
+		assert(num.getItem() == 10)
+
+		const str = new Box("String")
+		assert(str.getItem() == "String")
+
+class Box<T>:
+	var item: T
+
+	def new(item: T):
+		self.item = item
+
+	def getItem() -> T:
+		return item

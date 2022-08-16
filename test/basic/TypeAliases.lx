@@ -1,0 +1,11 @@
+alias type Number = int
+alias type Point<T> = (T, T)
+
+class TypeAliases extends Test.LaxeTest:
+	override def test:
+		const num: Number = 1
+		assert(num == 1)
+
+		const point = new Point(12.53, -88.3)
+		assert(point._0 == 12.53)
+		assert(point._1 == -88.3)

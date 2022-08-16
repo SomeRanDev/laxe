@@ -1,0 +1,46 @@
+class ControlFlow extends Test.LaxeTest:
+	override def test:
+		var val = 12
+
+		if val == 12:
+			assert(true)
+		else:
+			assert(false)
+
+		if val == 0:
+			assert(false)
+		else if val == 12:
+			assert(true)
+
+		if val == 0:
+			assert(false)
+		elif val == 12:
+			assert(true)
+		else:
+			assert(false)
+
+		assert(if val == 0:
+			false
+		else:
+			true
+		)
+
+		# ---
+
+		while val < 10:
+			assert(false)
+
+		while val < 20:
+			assert(val < 20)
+			val++
+
+		runonce while val < 0:
+			assert(true)
+
+		# ---
+
+		var index = 0
+		const arr = [1, 2, 3]
+		for num in arr:
+			assert(num == index + 1)
+			index++

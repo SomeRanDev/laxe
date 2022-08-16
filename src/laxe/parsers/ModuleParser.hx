@@ -425,9 +425,10 @@ class ModuleParser {
 
 			if(classIndent != null) {
 				while(classIndent == p.getIndent()) {
+					final metadata = p.parseAllNextDecors();
 					final mem = parseFunctionOrVariable();
 					if(mem != null) {
-						final field = convertModuleMemberToField(mem);
+						final field = convertModuleMemberToField(mem, metadata);
 						if(field != null) {
 							fields.push(field);
 						} else {
@@ -487,8 +488,8 @@ class ModuleParser {
 		return fields;
 	}
 
-	static function convertModuleMemberToField(m: LaxeModuleMember): Null<Field> {
-		return switch(m) {
+	function convertModuleMemberToField(m: LaxeModuleMember, metadata: Parser.Metadata): Null<Field> {
+		final field = switch(m) {
 			case Variable(name, pos, meta, type, access): {
 				// If no default value assigned, set one if the type has one.
 				// Otherwise, Haxe will default all types to null.
@@ -507,7 +508,7 @@ class ModuleParser {
 				{
 					name: name,
 					pos: pos,
-					meta: meta,
+					meta: metadata.string != null ? meta.concat(metadata.string) : meta,
 					kind: type,
 					access: access
 				};
@@ -516,13 +517,24 @@ class ModuleParser {
 				{
 					name: name,
 					pos: pos,
-					meta: meta,
+					meta: metadata.string != null ? meta.concat(metadata.string) : meta,
 					kind: type,
 					access: access
 				};
 			}
 			case _: null;
 		}
+
+		if(field != null) {
+			if(metadata.typed != null) {
+				for(d in metadata.typed) {
+					d.setField(field);
+					decorManager.addPointer(d);
+				}
+			}
+		}
+
+		return field;
 	}
 
 	function parseFunctionOrVariable(): Null<LaxeModuleMember> {

@@ -226,6 +226,19 @@ class Parser {
 		return true;
 	}
 
+	public function checkAheadIdent(ident: String): Bool {
+		if(index == nextIdentifierIndex) {
+			if(ident == nextIdentifier) {
+				return true;
+			}
+		}
+		final state = saveParserState();
+		final identAndPos = parseNextIdent();
+		final result = identAndPos != null && identAndPos.ident == ident;
+		restoreParserState(state);
+		return result;
+	}
+
 	public function findAndCheckAhead(check: String): Bool {
 		parseWhitespaceOrComments();
 		return checkAhead(check);
@@ -894,6 +907,11 @@ class Parser {
 			} else if(findAndParseNextContent(";")) {
 				null;
 			} else {
+				if(retType != null) {
+					errorHere("Expected ':', '=', or ';' after function def");
+				} else {
+					errorHere("Expected '->', ':', '=', or ';' after function def");
+				}
 				null;
 			}
 

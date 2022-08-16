@@ -1,0 +1,15 @@
+using StringTools;
+
+import haxe.ds.List;
+
+class ImportsAndUsings extends Test.LaxeTest:
+	override def test:
+		const str = "Hello World"
+		assert(str.startsWith("Hello"))
+		assert(str.endsWith("World"))
+
+		const list = new List<int>()
+		list.add(1)
+		list.add(2)
+		list.add(3)
+		assert(list.length == 3)

@@ -1,0 +1,38 @@
+class Enums extends Test.LaxeTest:
+	override def test:
+		const col1 = Red as Color
+		assert(col1.toString() == "red")
+
+		const col2 = Blue as Color
+		assert(col2.toString() == "blue")
+
+		const col3 = CustomString("#fff") as Color
+		assert(col3.toString() == "#fff")
+
+		const col4 = CustomInts(120, 60, 0) as Color
+		assert(col4.toString() == "rgb(120, 60, 0)")
+		assert(col4.addBlue(200).toString() == "rgb(120, 60, 200)")
+
+enum Color:
+	Red
+	Green
+	Blue
+	CustomString(str)
+	CustomInts(int, int, int)
+
+	def toString:
+		return switch self:
+			case Red: "red"
+			case Green: "green"
+			case Blue: "blue"
+			case CustomString(str): str
+			case CustomInts(r, g, b): 'rgb($r, $g, $b)'
+
+	def addBlue(blue: int) -> Color:
+		switch self:
+			case CustomInts(r, g, b):
+				return CustomInts(r, g, b + blue)
+			case _:
+				pass
+
+		return self

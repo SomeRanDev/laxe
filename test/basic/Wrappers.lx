@@ -1,0 +1,36 @@
+class Wrappers extends Test.LaxeTest:
+	override def test:
+		const counter = new Counter()
+		assert(counter.toInt() == 0)
+
+		counter.count()
+		assert(counter.toInt() == 1)
+
+		counter.count(9)
+		assert(counter.toInt() == 10)
+
+		const converter = new Converter(counter.toInt())
+		assert(converter == 10)
+
+		converter.mult(5)
+		assert(converter == 50)
+
+		const val: int = converter
+		assert(val == 50)
+
+wrapper Counter extends int:
+	inline def new:
+		self = 0
+
+	def toInt -> int:
+		return self
+
+	inline def count(amount = 1):
+		self += amount
+
+wrapper Converter extends int from int to int:
+	inline def new(startValue: int = 0):
+		self = startValue
+
+	inline def mult(val: int):
+		self *= val

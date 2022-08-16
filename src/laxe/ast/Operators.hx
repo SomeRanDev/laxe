@@ -49,8 +49,8 @@ final InfixOperators: Array<Operator> = [
 	new Operator("logicOr", "||", 3),
 
 	IntervalOperator,
-	new Operator("in", "in", 2),
-	new Operator("is", "is", 2),
+	new Operator("in", "in", 2, true),
+	new Operator("is", "is", 2, true),
 
 	new Operator("assign", "=", 1),
 	new Operator("addAssign", "+=", 1),
@@ -79,11 +79,20 @@ class Operator {
 	public var name(default, null): String;
 	public var op(default, null): String;
 	public var priority(default, null): Int;
+	public var identifierCheck(default, null): Bool;
 	
-	public function new(name: String, op: String, priority: Int) {
+	public function new(name: String, op: String, priority: Int, identifierCheck: Bool = false) {
 		this.name = name;
 		this.op = op;
 		this.priority = priority;
+		this.identifierCheck = identifierCheck;
+	}
+
+	public function check(parser: laxe.parsers.Parser) {
+		if(identifierCheck) {
+			return parser.checkAheadIdent(this.op);
+		}
+		return parser.checkAhead(this.op);
 	}
 }
 
