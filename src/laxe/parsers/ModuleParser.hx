@@ -863,9 +863,10 @@ class ModuleParser {
 		final decorIdent = p.tryParseIdent("decor");
 		if(decorIdent != null) {
 			final name = p.parseNextIdent();
+			final args = p.parseNextFunctionArgs();
 			if(name != null) {
 				final fields = parseClassFields(startIndent, "decor");
-				final d = new Decor(p, name.ident, fields, metadata);
+				final d = new Decor(p, name.ident, fields, args, metadata);
 				decors.push(d);
 				return true;
 			} else {

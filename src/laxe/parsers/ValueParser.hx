@@ -236,9 +236,9 @@ class ValueParser {
 
 		if(result != null) {
 			final e = switch(result.ident) {
-				case "`expr": macro laxe.ast.LaxeExpr;
-				case "`typeDef": macro laxe.ast.LaxeTypeDefinition;
-				case "`field": macro laxe.ast.LaxeField;
+				case "expr`": macro laxe.ast.LaxeExpr;
+				case "typeDef`": macro laxe.ast.LaxeTypeDefinition;
+				case "field`": macro laxe.ast.LaxeField;
 				case _: null;
 			}
 			if(e != null) {

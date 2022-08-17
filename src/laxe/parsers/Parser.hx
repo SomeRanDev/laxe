@@ -605,9 +605,9 @@ class Parser {
 	}
 
 	// function params
-	public function parseNextFunctionArgs(): Null<Array<FunctionArg>> {
+	public function parseNextFunctionArgs(): Null<Array<{ arg: FunctionArg, identPos: Position, typePos: Null<Position> }>> {
 		if(findAndParseNextContent("(")) {
-			final params: Array<FunctionArg> = [];
+			final params: Array<{ arg: FunctionArg, identPos: Position, typePos: Null<Position> }> = [];
 
 			if(!findAndParseNextContent(")")) {
 				while(!ended) {
@@ -617,8 +617,12 @@ class Parser {
 						break;
 					}
 
+					var typePos = null;
 					final type = if(findAndParseNextContent(":")) {
-						parseNextType();
+						final startIndex = getIndex();
+						final result = parseNextType();
+						typePos = makePosition(startIndex);
+						result;
 					} else {
 						null;
 					}
@@ -632,9 +636,13 @@ class Parser {
 					// TODO: Meta
 					
 					params.push({
-						name: ident.ident,
-						type: type,
-						value: expr
+						arg: {
+							name: ident.ident,
+							type: type,
+							value: expr
+						},
+						identPos: ident.pos,
+						typePos: typePos
 					});
 					
 					if(findAndParseNextContent(")")) {
@@ -885,8 +893,15 @@ class Parser {
 		final name = parseNextIdent();
 
 		if(name != null || !nameRequired) {
-			var args = parseNextFunctionArgs();
-			if(args == null) args = [];
+			final params = parseTypeParamDecls();
+			var args = {
+				final temp = parseNextFunctionArgs();
+				if(temp == null) {
+					[];
+				} else {
+					temp.map(argAndPos -> argAndPos.arg);
+				}
+			};
 
 			final retType = if(findAndParseNextContent("->")) {
 				parseNextType();
@@ -919,7 +934,8 @@ class Parser {
 				f: {
 					args: args,
 					ret: retType,
-					expr: expr
+					expr: expr,
+					params: params
 				},
 				k: name != null ? FunctionKind.FNamed(name.ident) : FunctionKind.FAnonymous,
 				n: name != null ? name.ident : null

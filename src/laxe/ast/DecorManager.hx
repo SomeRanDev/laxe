@@ -70,8 +70,8 @@ class DecorManager {
 				final decor = module.findDecorFromTypePath(d.path);
 				if(decor != null) {
 					if(d.targetExpr != null) {
-						if(decor.onExpr != null) {
-							final result = decor.onExpr({
+						if(decor.hasOnExpr()) {
+							final result = decor.callOnExpr(d, {
 								expr: d.targetExpr.expr,
 								pos: d.targetExpr.pos
 							});
@@ -81,7 +81,7 @@ class DecorManager {
 								d.targetExpr.pos = result.pos;
 							}
 						} else {
-							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onExpr(`expr) -> `expr method', d.pos);
+							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onExpr(expr`) -> expr` method', d.pos);
 						}
 					} else if(d.targetTypeDef != null) {
 						if(decor.onTypeDef != null) {

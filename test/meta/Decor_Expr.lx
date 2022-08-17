@@ -1,0 +1,32 @@
+class Decor_Expr extends Test.LaxeTest:
+	override def test:
+		const number = 5
+
+		assert(number == 5)
+		assert((@AddFour number) == 9)
+
+		assert((@AddExpr(100, 1) number) == 105)
+
+		assert((@AddNumbers(30, 30) {}) == 60)
+		assert((@AddNumbers(12, 12) null) == 24)
+		assert((@AddNumbers(0, 0) 100) != 100)
+
+		trace((@ExprFromString("1 + 2") {}))
+		assert((@ExprFromString("1 + 2") {}) == 3)
+
+decor AddFour:
+	def onExpr(e: expr`) -> expr`:
+		return template expr: $e + 4
+
+decor AddExpr(input: expr`):
+	def onExpr(e: expr`) -> expr`:
+		return template expr: $e + $input
+
+decor AddNumbers(a: int, b: int):
+	def onExpr(e: expr`) -> expr`:
+		const c = a + b;
+		return template expr: $v{c}
+
+decor ExprFromString(a: str):
+	def onExpr(e: expr`) -> expr`:
+		return expr`.fromString("1 + 2")

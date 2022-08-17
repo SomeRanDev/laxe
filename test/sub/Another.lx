@@ -18,8 +18,8 @@ class Another:
 		pass
 
 decor AndMore:
-	def onExpr(e: `expr) -> `expr:
-		return `expr.fromString(e.toString() + " + ' and more!'");
+	def onExpr(e: expr`) -> expr`:
+		return expr`.fromString(e.toString() + " + ' and more!'");
 
 enum Color:
 	Red;

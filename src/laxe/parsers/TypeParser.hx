@@ -95,13 +95,13 @@ class TypeParser {
 		if(idents.length == 1) {
 			if(startsWithLowerCase(idents[0].ident)) {
 				switch(idents[0].ident) {
-					case "`expr": {
+					case "expr`": {
 						return TPath({ pack: ["laxe", "ast"], name: "LaxeExpr" });
 					}
-					case "`typeDef": {
+					case "typeDef`": {
 						return TPath({ pack: ["laxe", "ast"], name: "LaxeTypeDefinition" });
 					}
-					case "`field": {
+					case "field`": {
 						return TPath({ pack: ["laxe", "ast"], name: "LaxeField" });
 					}
 				}

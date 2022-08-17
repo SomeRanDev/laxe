@@ -5,6 +5,7 @@ import haxe.macro.Context;
 
 @:nullSafety(Strict)
 @:forward
+@:remove
 abstract LaxeExpr(Expr) from Expr to Expr {
 	public function new(e: Expr) {
 		this = e;
@@ -99,7 +100,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 	}
 
 	// parse from string
-	public static inline function fromString(s: String, pos: Null<Position> = null): LaxeExpr {
+	public static function fromString(s: String, pos: Null<Position> = null): LaxeExpr {
 		#if macro
 		if(pos == null) {
 			pos = DecorManager.ProcessingPosition;

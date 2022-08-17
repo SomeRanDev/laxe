@@ -81,14 +81,30 @@ function convertSpecialCalls(e: Expr) {
 	}
 	return haxe.macro.ExprTools.map(e, convertSpecialCalls);
 }
-//evalMakeExpr
+
 @:nullSafety(Strict)
 function exprToFunction(e: Expr): Dynamic {
 	final newE = haxe.macro.ExprTools.map(e, convertSpecialCalls);
 	Context.typeof(macro laxe.ast.Eval._storeFunction(function() return $newE));
 	@:nullSafety(Off) return _func;
 }
+/*
+@:nullSafety(Strict)
+function exprToFunctionWArgs(e: Expr, arguments: Array<FunctionArg>): Dynamic {
+	final newE = haxe.macro.ExprTools.map(e, convertSpecialCalls);
 
+	final funcExpr = {
+		pos: e.pos,
+		expr: EFunction(FAnonymous, {
+			args: arguments,
+			expr: macro return $newE
+		})
+	}
+
+	Context.typeof(macro laxe.ast.Eval._storeFunction2(function() return $funcExpr));
+	@:nullSafety(Off) return _func;
+}
+*/
 #end
 
 @:exclude var _func: Null<Dynamic> = null;
