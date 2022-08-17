@@ -6,6 +6,7 @@ import haxe.macro.Expr.TypeDefinition;
 
 @:nullSafety(Strict)
 @:forward
+@:remove
 abstract LaxeTypeDefinition(TypeDefinition) from TypeDefinition to TypeDefinition {
 	public inline function new(t: TypeDefinition) {
 		this = t;
@@ -24,7 +25,7 @@ abstract LaxeTypeDefinition(TypeDefinition) from TypeDefinition to TypeDefinitio
 		return result;
 	}
 
-	public inline function addVar(name: String, expr: Null<LaxeExpr> = null, type: Null<ComplexType> = null) {
+	public function addVar(name: String, expr: Null<LaxeExpr> = null, type: Null<ComplexType> = null) {
 		this.fields.push({
 			name: name,
 			pos: expr != null ? expr.pos : this.pos,
@@ -33,13 +34,27 @@ abstract LaxeTypeDefinition(TypeDefinition) from TypeDefinition to TypeDefinitio
 		});
 	}
 
-	public inline function addFunction(expr: LaxeExpr, name: Null<String> = null) {
+	public function addFunction(expr: LaxeExpr, name: Null<String> = null) {
 		switch(expr.expr) {
 			case EFunction(kind, f): {
-				final name = switch(kind) {
-					case FNamed(name, _): name;
+				final inferName = switch(kind) {
+					case FNamed(n, _): n;
 					case _: name;
 				}
+				#if macro
+				if(inferName == null) {
+					Context.error("Unable to determine function name", expr.pos);
+					return;
+				}
+				#end
+				this.fields.push({
+					name: inferName != null ? inferName : "unnamed",
+					pos: expr.pos,
+					kind: FFun(f),
+					access: [APublic]
+				});
+			}
+			case _: {
 				#if macro
 				if(name == null) {
 					Context.error("Unable to determine function name", expr.pos);
@@ -49,11 +64,13 @@ abstract LaxeTypeDefinition(TypeDefinition) from TypeDefinition to TypeDefinitio
 				this.fields.push({
 					name: name != null ? name : "unnamed",
 					pos: expr.pos,
-					kind: FFun(f),
+					kind: FFun({
+						args: [],
+						expr: expr
+					}),
 					access: [APublic]
 				});
 			}
-			case _:
 		}
 	}
 

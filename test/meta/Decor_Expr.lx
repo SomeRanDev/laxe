@@ -11,8 +11,8 @@ class Decor_Expr extends Test.LaxeTest:
 		assert((@AddNumbers(12, 12) null) == 24)
 		assert((@AddNumbers(0, 0) 100) != 100)
 
-		trace((@ExprFromString("1 + 2") {}))
 		assert((@ExprFromString("1 + 2") {}) == 3)
+		assert((@ExprFromString("null") {}) == null)
 
 decor AddFour:
 	def onExpr(e: expr`) -> expr`:
@@ -29,4 +29,4 @@ decor AddNumbers(a: int, b: int):
 
 decor ExprFromString(a: str):
 	def onExpr(e: expr`) -> expr`:
-		return expr`.fromString("1 + 2")
+		return expr`.fromString(a)

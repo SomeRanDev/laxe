@@ -1,0 +1,38 @@
+class Decor_TypeDef extends Test.LaxeTest:
+	override def test:
+		const b = new ClassB()
+		assert(b.value == 10)
+
+		b.DoNothingFunc()
+
+		assert(b.ThisIs1337 == 1337)
+
+		assert(b.GetStr() == "Hello from decor")
+
+@RenameClass("ClassB")
+@AddFunction("DoNothingFunc")
+@AddVar("ThisIs1337", 1337)
+@AddFunctionWithExpr("GetStr", return "Hello from decor")
+class ClassA:
+	pub var value = 10
+	def new: pass
+
+decor RenameClass(newName: str):
+	def onTypeDef(td: typeDef`) -> typeDef`:
+		td.name = newName
+		return td
+
+decor AddFunction(funcName: str):
+	def onTypeDef(td: typeDef`) -> typeDef`:
+		td.addFunction(template expr: pass, funcName)
+		return td
+
+decor AddVar(varName: str, varExpr: expr`):
+	def onTypeDef(td: typeDef`) -> typeDef`:
+		td.addVar(varName, varExpr)
+		return td
+
+decor AddFunctionWithExpr(funcName: str, e: expr`):
+	def onTypeDef(td: typeDef`) -> typeDef`:
+		td.addFunction(e, funcName)
+		return td

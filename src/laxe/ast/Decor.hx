@@ -291,7 +291,7 @@ class Decor {
 	}
 
 	public function hasOnTypeDef() {
-		return onExpr != null;
+		return onTypeDef != null;
 	}
 
 	public function callOnTypeDef(dPointer: DecorPointer, td: laxe.ast.LaxeTypeDefinition) {
@@ -310,6 +310,10 @@ class Decor {
 			return;
 		}
 
+		if(hasArguments) {
+			fun.args = fun.args.concat(arguments.map(argAndPos -> argAndPos.arg));
+		}
+
 		final funcExpr = {
 			expr: EFunction(FNamed(f.name, false), fun),
 			pos: f.pos
@@ -319,7 +323,7 @@ class Decor {
 	}
 
 	public function hasOnField() {
-		return onExpr != null;
+		return onField != null;
 	}
 
 	public function callOnField(dPointer: DecorPointer, f: laxe.ast.LaxeField) {
@@ -336,6 +340,10 @@ class Decor {
 		if(onField != null) {
 			p.error("Duplicate onField function", f.pos);
 			return;
+		}
+
+		if(hasArguments) {
+			fun.args = fun.args.concat(arguments.map(argAndPos -> argAndPos.arg));
 		}
 
 		final funcExpr = {

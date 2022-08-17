@@ -84,8 +84,8 @@ class DecorManager {
 							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onExpr(expr`) -> expr` method', d.pos);
 						}
 					} else if(d.targetTypeDef != null) {
-						if(decor.onTypeDef != null) {
-							final result: LaxeTypeDefinition = decor.onTypeDef(Reflect.copy(d.targetTypeDef));
+						if(decor.hasOnTypeDef()) {
+							final result: LaxeTypeDefinition = decor.callOnTypeDef(d, Reflect.copy(d.targetTypeDef));
 							if(result != null) {
 								PositionFixer.typeDef(result);
 								d.targetTypeDef.pack = result.pack;
@@ -99,11 +99,11 @@ class DecorManager {
 								d.targetTypeDef.fields = result.fields;
 							}
 						} else {
-							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onTypeDef(`typeDef) -> `typeDef method', d.pos);
+							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onTypeDef(typeDef`) -> typeDef` method', d.pos);
 						}
 					} else if(d.targetField != null) {
-						if(decor.onField != null) {
-							final result: LaxeField = decor.onField(Reflect.copy(d.targetField));
+						if(decor.hasOnField()) {
+							final result: LaxeField = decor.callOnField(d, Reflect.copy(d.targetField));
 							if(result != null) {
 								PositionFixer.field(result);
 								d.targetField.pos = result.pos;
@@ -114,7 +114,7 @@ class DecorManager {
 								d.targetField.access = result.access;
 							}
 						} else {
-							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onField(`field) -> `field method', d.pos);
+							Context.warning('Decorator \'${pathToString(d.path)}\' does not define an onField(field`) -> field` method', d.pos);
 						}
 					}
 				} else {
