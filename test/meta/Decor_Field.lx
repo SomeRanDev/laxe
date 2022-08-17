@@ -1,0 +1,32 @@
+class Decor_Field extends Test.LaxeTest:
+	override def test:
+		const a = new ClassA()
+		assert(a.aNumber == 10)
+
+		assert(a.notInit == "Init")
+
+		assert(a.doNothing() == "Actually do something")
+
+class ClassA:
+	@RenameField("aNumber")
+	pub var value = 10
+
+	@SetExpr("Init")
+	pub var notInit
+
+	def new:
+		pass
+	
+	@SetExpr(return "Actually do something")
+	def doNothing:
+		pass
+
+decor RenameField(newName: str):
+	def onField(f: field`) -> field`:
+		f.name = newName
+		return f
+
+decor SetExpr(e: expr`):
+	def onField(f: field`) -> field`:
+		f.setExpr(e)
+		return f
