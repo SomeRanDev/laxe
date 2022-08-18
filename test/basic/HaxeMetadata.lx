@@ -1,0 +1,21 @@
+import haxe.rtti.Rtti;
+
+class HaxeMetadata extends Test.LaxeTest:
+	override def test:
+		assert(Rtti.hasRtti(RttiHolder));
+
+		const rtti = Rtti.getRtti(RttiHolder);
+		assert(rtti.module == "basic.HaxeMetadata");
+
+		const m1 = rtti.meta.filter(def(m) = m.name == "Haxe-like Metadata")[0]
+		assert(m1.params.length == 0)
+
+		const m2 = rtti.meta.filter(def(m) = m.name == "Metaholder")[0]
+		assert(m2.params[0] == "1")
+		assert(m2.params[1] == "2")
+		assert(m2.params[2] == "3")
+
+@:rtti
+@"Haxe-like Metadata"
+@"Metaholder"(1, 2, 3)
+class RttiHolder;

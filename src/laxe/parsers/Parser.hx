@@ -669,13 +669,16 @@ class Parser {
 		var typePath = null;
 
 		if(findAndParseNextContent("@")) {
-			if(findAndParseNextContent("[")) {
+			if(findAndParseNextContent(":")) {
+				final ident = parseNextIdent();
+				name = ":" + ident.ident;
+			} else if(findAndParseNextContent("\"")) {
 				name = "";
-				while(!ended && !checkAhead("]")) {
+				while(!ended && !checkAhead("\"")) {
 					name += currentChar();
 					incrementIndex(1);
-					if(checkAhead("]]")) {
-						name += "]";
+					if(checkAhead("\\\"")) {
+						name += "\"";
 					}
 				}
 				incrementIndex(1);
