@@ -9,7 +9,7 @@ import laxe.types.Tuple;
 
 import laxe.parsers.Parser;
 
-import laxe.ast.DecorManager;
+import laxe.ast.MacroManager.MacroPointer;
 import laxe.ast.Operators.Operator;
 import laxe.ast.Operators.PrefixOperators;
 import laxe.ast.Operators.InfixOperators;
@@ -662,14 +662,14 @@ class ExpressionParser {
 						final metaParams = exprs.map(e -> (e : LaxeExpr).toHaxeString()).join(", ");
 						macroReifReplacer.set('@$metaName($metaParams) 0', '$$$cn{$metaParams}');
 
-						return {
+						return post_expr(p, {
 							expr: EMeta({
 								name: metaName,
 								pos: pos,
 								params: exprs
 							}, macro 0),
 							pos: pos
-						};
+						});
 					}
 				}
 				case _:
@@ -800,6 +800,48 @@ class ExpressionParser {
 			p.incrementIndex(infix.op.length);
 			final nextExpr = expr(p);
 			return addInfixToExpr(infix, p.makePosition(startIndex), e, nextExpr, p);
+		}
+
+		// ***************************************
+		// * Macro Call Operator
+		// ***************************************
+		if(p.parseNextContent("!")) {
+			final exprs = if(p.parseNextContent("(")) {
+				p.parseNextExpressionList(")");
+			} else {
+				[];
+			}
+			final pos = p.makePosition(startIndex);
+
+			function getPath(e: Expr, list: Array<StringAndPos>) {
+				return switch(e.expr) {
+					case EConst(CIdent(c)): {
+						list.push({ ident: c, pos: e.pos });
+						list;
+					}
+					case EField(e2, field): {
+						getPath(e2, list);
+						list.push({ ident: field, pos: e.pos });
+						list;
+					}
+					case _: {
+						p.error("Invalid macro call on this expression", e.pos);
+						list;
+					}
+				}
+			}
+
+			final result = {
+				expr: EConst(CIdent("null")),//ECall(e, exprs),
+				pos: pos
+			};
+
+			final pathMembers = getPath(e, [] );
+			final mp = new MacroPointer(TypeParser.convertIdentListToTypePath(p, pathMembers), pos, exprs);
+			mp.setExpr(result);
+			p.addExprMacroPointer(mp);
+
+			return post_expr(p, result);
 		}
 
 		// ***************************************

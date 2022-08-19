@@ -4,6 +4,8 @@ package laxe.parsers;
 
 import laxe.types.Tuple;
 
+import laxe.parsers.Parser.StringAndPos;
+
 import haxe.macro.Expr;
 
 class TypeParser {
@@ -148,22 +150,19 @@ class TypeParser {
 			}
 		}
 
-		var params = null;
-		if(p.findAndParseNextContent("<")) {
-			final typeList = parseTypeList(p, ">");
-			params = typeList.map(t -> TPType(t.type));
-		}
-
 		if(name.length <= 0 && pack.length > 0) {
 			name = pack.pop();
 		}
 
-		var result = TPath({
-			pack: pack,
-			name: name,
-			sub: sub,
-			params: params
-		});
+		final typePath = convertIdentListToTypePath(p, idents);
+
+		typePath.params = null;
+		if(p.findAndParseNextContent("<")) {
+			final typeList = parseTypeList(p, ">");
+			typePath.params = typeList.map(t -> TPType(t.type));
+		}
+
+		var result = TPath(typePath);
 
 		while(true) {
 			if(p.findAndCheckAhead("?")) {
@@ -184,6 +183,45 @@ class TypeParser {
 		}
 
 		return result;
+	}
+
+	public static function convertIdentListToTypePath(p: Parser, identList: Array<StringAndPos>): TypePath {
+		final pack = [];
+		var name = "";
+		var sub = null;
+		var mode = 0;
+
+		for(i in identList) {
+			if(mode == 0) {
+				if(!startsWithLowerCase(i.ident)) {
+					name = i.ident;
+					mode = 1;
+				} else {
+					pack.push(i.ident);
+				}
+			} else if(mode == 1 && !startsWithLowerCase(i.ident)) {
+				sub = i.ident;
+				mode = 2;
+			} else {
+				final msg = if(mode == 2) {
+					"Unexpected identifier. Nothing should exist beyond sub-type?";
+				} else {
+					"Unexpected identifier. All packages type should start lowercase.";
+				}
+				p.error(msg, i.pos);
+			}
+		}
+
+		if(name.length <= 0 && pack.length > 0) {
+			name = pack.pop();
+		}
+
+		return {
+			pack: pack,
+			name: name,
+			sub: sub,
+			params: null
+		};
 	}
 
 	public static function parseTypeList(p: Parser, endChar: String, allowNames: Bool = false): Array<{ name: Null<String>, type: ComplexType, pos: Null<Position> }> {

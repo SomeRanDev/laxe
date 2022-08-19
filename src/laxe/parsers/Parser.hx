@@ -10,6 +10,8 @@ import haxe.macro.Expr;
 import laxe.parsers.ValueParser;
 import laxe.parsers.ModuleParser;
 import laxe.ast.DecorManager.DecorPointer;
+import laxe.ast.MacroManager.MacroPointer;
+
 
 typedef StringAndPos = { ident: String, pos: Position };
 
@@ -96,6 +98,13 @@ class Parser {
 	public function addExprDecorPointer(d: DecorPointer) {
 		if(module != null) {
 			module.addExprDecorPointer(d);
+		}
+	}
+
+	// macro
+	public function addExprMacroPointer(d: MacroPointer) {
+		if(module != null) {
+			module.addExprMacroPointer(d);
 		}
 	}
 
@@ -892,17 +901,18 @@ class Parser {
 	}
 
 	// function
+	public var lastArgumentsParsed(default, null): Null<Array<{ arg: FunctionArg, identPos: Position, typePos: Null<Position> }>>;
 	public function parseFunctionAfterDef(nameRequired: Bool = false): Null<{ f: Function, k: FunctionKind, n: Null<String> }> {
 		final name = parseNextIdent();
 
 		if(name != null || !nameRequired) {
 			final params = parseTypeParamDecls();
 			var args = {
-				final temp = parseNextFunctionArgs();
-				if(temp == null) {
+				lastArgumentsParsed = parseNextFunctionArgs();
+				if(lastArgumentsParsed == null) {
 					[];
 				} else {
-					temp.map(argAndPos -> argAndPos.arg);
+					lastArgumentsParsed.map(argAndPos -> argAndPos.arg);
 				}
 			};
 

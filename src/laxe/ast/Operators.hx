@@ -62,7 +62,9 @@ final InfixOperators: Array<Operator> = [
 	new Operator("shiftRightAssign", ">>=", 1),
 	new Operator("bitAndAssign", "&=", 1),
 	new Operator("bitXOrAssign", "^=", 1),
-	new Operator("bitOrAssign", "|=", 1)
+	new Operator("bitOrAssign", "|=", 1),
+
+	new Operator("fatArrow", "=>", 1)
 ];
 
 final SuffixOperators: Array<Operator> = [

@@ -1,0 +1,20 @@
+class Macros extends Test.LaxeTest:
+	override def test:
+		assert(genNumber! == 123)
+
+		assert(addTwoNums!(22, 22) == 44)
+
+		assert(compileTimeSin!(1) == 0.84)
+		assert(compileTimeSin!(3.14) == 0)
+
+macro genNumber -> expr` = template expr: 123
+
+macro addTwoNums(first: int, second: int) -> expr`:
+	return template expr:
+		$v{first} + $v{second}
+
+macro compileTimeSin(value: float) -> expr`:
+	const result = Math.sin(value)
+	const rounded = Math.floor(result * 100) / 100
+	return template expr:
+		$v{rounded}

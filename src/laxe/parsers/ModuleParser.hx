@@ -9,9 +9,11 @@ import haxe.io.Path;
 import haxe.macro.Context;
 import haxe.macro.Expr;
 
-import laxe.ast.Decor;
+import laxe.ast.MacroManager;
 import laxe.ast.DecorManager;
 import laxe.ast.ResolveDefaultValue;
+import laxe.ast.comptime.Decor;
+import laxe.ast.comptime.MacroFunc;
 
 import laxe.parsers.Parser;
 
@@ -35,12 +37,15 @@ class ModuleParser {
 
 	var importedModules: Map<String, ModuleParser>;
 	var importedDecors: Array<Decor>;
+	var importedMacros: Array<MacroFunc>;
 
 	var p: Parser;
 	var decorManager: DecorManager;
+	var macroManager: MacroManager;
 
 	var members: Array<{ member: LaxeModuleMember, metadata: Parser.Metadata }>;
 	var decors: Array<Decor>;
+	var macros: Array<MacroFunc>;
 
 	static var LaxeModuleMap: Map<String, ModuleParser> = [];
 
@@ -58,6 +63,7 @@ class ModuleParser {
 
 		importedModules = [];
 		importedDecors = [];
+		importedMacros = [];
 
 		var content = File.getContent(filePath);
 		if(!StringTools.endsWith(content, "\n")) {
@@ -65,16 +71,22 @@ class ModuleParser {
 		}
 
 		decorManager = new DecorManager();
+		macroManager = new MacroManager();
 
 		p = new Parser(content, filePath, this);
 		members = [];
 		decors = [];
+		macros = [];
 
 		parseModule();
 	}
 
 	public function addExprDecorPointer(d: DecorPointer) {
 		decorManager.addPointer(d);
+	}
+
+	public function addExprMacroPointer(m: MacroPointer) {
+		macroManager.addPointer(m);
 	}
 
 	function parseModule() {
@@ -108,7 +120,7 @@ class ModuleParser {
 
 			final metadata = p.parseAllNextDecors();
 
-			if(parseDecor(metadata)) {
+			if(parseDecor(metadata) || parseMacro(metadata)) {
 				continue;
 			}
 
@@ -163,6 +175,7 @@ class ModuleParser {
 		processUsings();
 		processMembers();
 		processDecors();
+		processMacros();
 	}
 
 	function processImports() {
@@ -179,12 +192,23 @@ class ModuleParser {
 					final subName = names.pop();
 					final modName = names.join(".");
 					if(LaxeModuleMap.exists(modName)) {
+						var found = false;
 						final m = LaxeModuleMap[modName];
 						for(decor in m.decors) {
 							if(decor.name == subName) {
 								importedDecors.push(decor);
 								importsToBeDeleted.push(i);
+								found = true;
 								break;
+							}
+						}
+						if(!found) {
+							for(mac in m.macros) {
+								if(mac.name == subName) {
+									importedMacros.push(mac);
+									importsToBeDeleted.push(i);
+									break;
+								}
 							}
 						}
 					}
@@ -209,11 +233,22 @@ class ModuleParser {
 					if(u.sub == null) {
 						importedModules[m.moduleName] = m;
 					} else {
+						var found = false;
 						for(decor in m.decors) {
 							if(decor.name == u.sub) {
 								importedDecors.push(decor);
 								usingsToBeDeleted.push(i);
+								found = true;
 								break;
+							}
+						}
+						if(!found) {
+							for(mac in m.macros) {
+								if(mac.name == u.sub) {
+									importedMacros.push(mac);
+									usingsToBeDeleted.push(i);
+									break;
+								}
 							}
 						}
 					}
@@ -229,6 +264,10 @@ class ModuleParser {
 
 	function processDecors() {
 		decorManager.ApplyDecors(this);
+	}
+
+	function processMacros() {
+		macroManager.ApplyMacros(this);
 	}
 
 	function processMembers() {
@@ -267,6 +306,44 @@ class ModuleParser {
 				for(d in m.decors) {
 					if(d.name == typePath.sub || d.name == name) {
 						return d;
+					}
+				}
+			}
+		}
+
+		return null;
+	}
+
+	public function findMacroFromTypePath(typePath: TypePath) {
+		final name = typePath.name;
+		if(typePath.pack.length == 0 && typePath.sub == null) {
+			for(m in macros) {
+				if(m.name == name) {
+					return m;
+				}
+			}
+			for(m in importedMacros) {
+				if(m.name == name) {
+					return m;
+				}
+			}
+		}
+
+		if(typePath.pack.length == 0 && typePath.sub != null) {
+			final module = importedModules[typePath.name];
+			for(m in module.macros) {
+				if(m.name == typePath.sub) {
+					return m;
+				}
+			}
+		}
+
+		final targetDotPath = typePath.pack.join(".") + "." + typePath.name;
+		for(module in laxe.Laxe.Modules) {
+			if(module.modulePath == targetDotPath) {
+				for(m in module.macros) {
+					if(m.name == typePath.sub || m.name == name) {
+						return m;
 					}
 				}
 			}
@@ -872,6 +949,32 @@ class ModuleParser {
 			} else {
 				p.errorHere("Expected decor name");
 			}
+		} else {
+			p.restoreParserState(state);
+		}
+
+		return false;
+	}
+
+	function parseMacro(metadata: Parser.Metadata): Bool {
+		final state = p.saveParserState();
+
+		final startIndex = p.getIndex();
+
+		final macroIdent = p.tryParseIdent("macro");
+		if(macroIdent != null) {
+			final funcData = p.parseFunctionAfterDef(true);
+			final m = new MacroFunc(
+				p,
+				funcData.n,
+				funcData.f.expr,
+				funcData.f.ret,
+				p.lastArgumentsParsed,
+				metadata,
+				p.makePosition(startIndex)
+			);
+			macros.push(m);
+			return true;
 		} else {
 			p.restoreParserState(state);
 		}
