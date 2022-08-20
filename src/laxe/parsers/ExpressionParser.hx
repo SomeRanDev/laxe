@@ -45,6 +45,7 @@ class ExpressionParser {
 			case "-": OpNeg;
 			case "!": OpNot;
 			case "~": OpNegBits;
+			case "...": OpSpread;
 			case _: null;
 		}
 	}

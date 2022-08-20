@@ -8,7 +8,8 @@ final PrefixOperators: Array<Operator> = [
 	new Operator("logicNot", "!", 16),
 	new Operator("bitNot", "~", 16),
 	new Operator("preDecrement", "--", 16),
-	new Operator("preIncrement", "++", 16)
+	new Operator("preIncrement", "++", 16),
+	new Operator("spread", "...", 16)
 ];
 
 final IntervalOperator = new Operator("interval", "...", 17);

@@ -620,6 +620,7 @@ class Parser {
 
 			if(!findAndParseNextContent(")")) {
 				while(!ended) {
+					final isRest = parseNextContent("...");
 					final ident = parseNextIdent();
 					if(ident == null) {
 						errorHere("Expected identifier");
@@ -631,8 +632,19 @@ class Parser {
 						final startIndex = getIndex();
 						final result = parseNextType();
 						typePos = makePosition(startIndex);
-						result;
+						if(isRest) {
+							TPath({
+								pack: ["haxe"],
+								name: "Rest",
+								params: [TPType(result)]
+							});
+						} else {
+							result;
+						}
 					} else {
+						if(isRest) {
+							error("Rest argument must specify argument type", ident.pos);
+						}
 						null;
 					}
 					
@@ -657,6 +669,9 @@ class Parser {
 					if(findAndParseNextContent(")")) {
 						break;
 					} else if(findAndParseNextContent(",")) {
+						if(isRest) {
+							errorHere("Rest argument must be last argument for function");
+						}
 						continue;
 					} else {
 						errorHere("Expected ')' or ','");

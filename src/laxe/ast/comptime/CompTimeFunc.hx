@@ -52,13 +52,32 @@ class CompTimeFunc {
 
 	function verifyArgumentsErrorMsg(t: ComplexType) {
 		final tstr = haxe.macro.ComplexTypeTools.toString(t);
-		return '$tstr is not a valid ${metaType()} argument type. Only int, float, bool, str, dyn, expr`, T?, T[], or anonymous structs may be used.';
+		return '$tstr is not a valid ${metaType()} argument type. Only int, float, bool, str, dyn, expr`, T?, T[], ...T, or anonymous structs may be used.';
+	}
+
+	function isRest(t: ComplexType): Null<ComplexType> {
+		return switch(t) {
+			case TPath({ pack: ["haxe"], name: "Rest", sub: null, params: [TPType(t2)] }): t2;
+			case _: null;
+		}
 	}
 
 	function convertArguments(inputArgs: Null<Array<Expr>>, errorPos: Position): Array<Dynamic> {
-		final result = [];
+		final result: Array<Dynamic> = [];
 		var index = 0;
 		for(a in arguments) {
+			final isRestType = isRest(a.arg.type);
+			if(isRestType != null) {
+				if(inputArgs != null) {
+					final restInputs = [];
+					while(inputArgs.length > index) {
+						restInputs.push(convertArgumentInput(isRestType, inputArgs[index]));
+						index++;
+					}
+					result.push(restInputs);
+					continue;
+				}
+			}
 			result.push(if(inputArgs != null && inputArgs.length > index) {
 				if(a.arg.type != null) {
 					convertArgumentInput(a.arg.type, inputArgs[index]);
@@ -84,7 +103,7 @@ class CompTimeFunc {
 		return result;
 	}
 
-	function isValidDecorArgument(t: ComplexType) {
+	function isValidDecorArgument(t: ComplexType): Bool {
 		return switch(t) {
 			case TAnonymous(_): true;
 			case TParent(t2): isValidDecorArgument(t2);
@@ -92,6 +111,14 @@ class CompTimeFunc {
 			case TNamed(_, t2): isValidDecorArgument(t2);
 			case TPath({ pack: ["laxe", "ast"], name: "LaxeExpr" }): true;
 			case TPath({ pack: ["haxe", "macro"], name: "Expr" }): true;
+			case TPath({ pack: ["haxe"], name: "Rest", params: p }) if(p != null && p.length == 1): {
+				switch(p[0]) {
+					case TPType(paramType): {
+						isValidDecorArgument(paramType);
+					}
+					case _: false;
+				}
+			}
 			case TPath(p): {
 				if(p.pack.length == 0 && p.sub == null) {
 					switch(p.name) {

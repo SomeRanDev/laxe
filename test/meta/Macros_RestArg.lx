@@ -1,0 +1,19 @@
+class Macros_RestArg extends Test.LaxeTest:
+	override def test:
+		const numVec = vec!(1, 2, 3)
+		assert(numVec.length == 3)
+		assert(numVec[0] == 1)
+		assert(numVec[2] == 3)
+
+		const strVec = vec!("dog", "cat")
+		assert(strVec.length == 2)
+		assert(strVec[1] == "cat")
+
+macro vec(...exprs: expr`) -> str[]:
+	const result = []
+	var index = 0
+	result.push("const temp = new haxe.ds.Vector(" + exprs.length + ")")
+	for e in exprs:
+		result.push("temp[" + (index++) + "] = " + e.toString())
+	result.push("temp")
+	return result
