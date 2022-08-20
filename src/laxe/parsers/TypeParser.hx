@@ -65,7 +65,7 @@ class TypeParser {
 			}
 		}
 
-		final idents = [];
+		var idents = [];
 
 		final ident = p.parseNextIdent();
 		if(ident != null) {
@@ -119,39 +119,9 @@ class TypeParser {
 					case _: null;
 				}
 				if(name != null) {
-					return TPath({ pack: [], name: name });
+					idents = [{ ident: name, pos: idents[0].pos }];
 				}
 			}
-		}
-
-		final pack = [];
-		var name = "";
-		var sub = null;
-		var mode = 0;
-
-		for(i in idents) {
-			if(mode == 0) {
-				if(!startsWithLowerCase(i.ident)) {
-					name = i.ident;
-					mode = 1;
-				} else {
-					pack.push(i.ident);
-				}
-			} else if(mode == 1 && !startsWithLowerCase(i.ident)) {
-				sub = i.ident;
-				mode = 2;
-			} else {
-				final msg = if(mode == 2) {
-					"Unexpected identifier. Nothing should exist beyond sub-type?";
-				} else {
-					"Unexpected identifier. All packages type should start lowercase.";
-				}
-				p.error(msg, i.pos);
-			}
-		}
-
-		if(name.length <= 0 && pack.length > 0) {
-			name = pack.pop();
 		}
 
 		final typePath = convertIdentListToTypePath(p, idents);
@@ -165,13 +135,13 @@ class TypeParser {
 		var result = TPath(typePath);
 
 		while(true) {
-			if(p.findAndCheckAhead("?")) {
+			if(p.parseNextContent("?")) {
 				result = TPath({
 					pack: [],
 					name: "Null",
 					params: [TPType(result)]
 				});
-			} else if(p.findAndCheckAhead("[]")) {
+			} else if(p.parseNextContent("[]")) {
 				result = TPath({
 					pack: [],
 					name: "Array",

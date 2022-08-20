@@ -19,7 +19,7 @@ abstract LaxeField(Field) from Field to Field {
 		}
 	}
 
-    public inline function setExpr(e: LaxeExpr) {
+    public inline function setExpr(e: LaxeExpr): Void {
         this.kind = switch(this.kind) {
             case FVar(t, _): FVar(t, e);
 			case FFun(fun): {

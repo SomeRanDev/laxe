@@ -70,7 +70,7 @@ class MacroManager {
 						}
 					}
 				} else {
-					Context.warning('Macro \'${pathToString(m.path)}\' could not be found', m.pos);
+					Context.error('Macro \'${pathToString(m.path)}\' could not be found', m.pos);
 				}
 			}
 		}

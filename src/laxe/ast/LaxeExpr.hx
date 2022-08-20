@@ -12,7 +12,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 	}
 
 	// convert to laxe code string
-	public function toString() {
+	public function toString(): String {
 		return switch(this.expr) {
 			case EBlock(exprs): {
 				"block:\n" + blockToString(exprs);
@@ -60,9 +60,9 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 			case EMeta(s, e): {
 				if(s.params != null) {
 					final pStr = s.params.map(p -> normalExprToString(p)).join(", ");
-					'@[${s.name}](${pStr})\n' + normalExprToString(e);
+					'@"${s.name}"(${pStr})\n' + normalExprToString(e);
 				} else {
-					'@[${s.name}]\n' + normalExprToString(e);
+					'@"${s.name}"\n' + normalExprToString(e);
 				}
 			}
 			case _: {
@@ -71,19 +71,19 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	static function normalExprToString(e: Expr) {
+	static function normalExprToString(e: Expr): String {
 		final le: LaxeExpr = e;
 		return le.toString();
 	}
 
-	static function possiblyBlockToString(expr: Expr) {
+	static function possiblyBlockToString(expr: Expr): String {
 		return switch(expr.expr) {
 			case EBlock(exprs): blockToString(exprs);
 			case _: "\t" + normalExprToString(expr);
 		}
 	}
 
-	static inline function blockToString(exprs: Array<Expr>) {
+	static inline function blockToString(exprs: Array<Expr>): String {
 		var result = [];
 		for(e in exprs) {
 			final le: LaxeExpr = e;
@@ -95,7 +95,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 	}
 
 	// utility
-	public inline function traceSelf() {
+	public inline function traceSelf(): Void {
 		trace(toString());
 	}
 
@@ -213,7 +213,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getArrayAccess() {
+	public inline function getArrayAccess(): { e1: LaxeExpr, e2: LaxeExpr } {
 		return switch(this.expr) {
 			case EArray(e1, e2): { e1: e1, e2: e2 };
 			case _: throw "Not an EArray";
@@ -227,7 +227,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getBinop() {
+	public inline function getBinop(): { op: Binop, e1: LaxeExpr, e2: LaxeExpr } {
 		return switch(this.expr) {
 			case EBinop(op, e1, e2): { op: op, e1: e1, e2: e2 };
 			case _: throw "Not an EBinop";
@@ -241,7 +241,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getFieldAccess() {
+	public inline function getFieldAccess(): { e: LaxeExpr, field: String } {
 		return switch(this.expr) {
 			case EField(e, field): { e: e, field: field };
 			case _: throw "Not an EField";
@@ -262,7 +262,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getUnop() {
+	public inline function getUnop(): { op: Unop, postFix: Bool, e: LaxeExpr } {
 		return switch(this.expr) {
 			case EUnop(op, postFix, e): { op: op, postFix: postFix, e: e };
 			case _: throw "Not an EUnop";
@@ -290,7 +290,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getArrayDecl(): Array<Expr> {
+	public inline function getArrayDecl(): Array<LaxeExpr> {
 		return switch(this.expr) {
 			case EArrayDecl(values): values;
 			case _: throw "Not an EArrayDecl";
@@ -304,7 +304,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getCall() {
+	public inline function getCall(): { e: Expr, params: Array<LaxeExpr> } {
 		return switch(this.expr) {
 			case ECall(e, params): { e: e, params: params };
 			case _: throw "Not an ECall";
@@ -318,7 +318,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getNewCall() {
+	public inline function getNewCall(): { t: TypePath, params: Array<LaxeExpr> } {
 		return switch(this.expr) {
 			case ENew(t, params): { t: t, params: params };
 			case _: throw "Not an ENew";
@@ -346,7 +346,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getFunctionDecl() {
+	public inline function getFunctionDecl(): { kind: Null<FunctionKind>, f: Function } {
 		return switch(this.expr) {
 			case EFunction(kind, f): { kind: kind, f: f };
 			case _: throw "Not an EFunction";
@@ -360,7 +360,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getBlock(): Array<Expr> {
+	public inline function getBlock(): Array<LaxeExpr> {
 		return switch(this.expr) {
 			case EBlock(exprs): exprs;
 			case _: throw "Not an EFunction";
@@ -374,7 +374,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 	
-	public inline function getFor() {
+	public inline function getFor(): { it: LaxeExpr, expr: LaxeExpr } {
 		return switch(this.expr) {
 			case EFor(it, expr): { it: it, expr: expr };
 			case _: throw "Not an EFor";
@@ -388,7 +388,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getIf() {
+	public inline function getIf(): { econd: LaxeExpr, eif: LaxeExpr, eelse: Null<LaxeExpr> } {
 		return switch(this.expr) {
 			case EIf(econd, eif, eelse): { econd: econd, eif: eif, eelse: eelse };
 			case _: throw "Not an EIf";
@@ -402,7 +402,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getWhile() {
+	public inline function getWhile(): { econd: LaxeExpr, e: LaxeExpr, normalWhile: Bool } {
 		return switch(this.expr) {
 			case EWhile(econd, e, normalWhile): { econd: econd, e: e, normalWhile: normalWhile };
 			case _: throw "Not an EWhile";
@@ -416,7 +416,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getSwitch() {
+	public inline function getSwitch(): { e: LaxeExpr, cases: Array<Case>, edef: Null<LaxeExpr> } {
 		return switch(this.expr) {
 			case ESwitch(e, cases, edef): { e: e, cases: cases, edef: edef };
 			case _: throw "Not an ESwitch";
@@ -430,7 +430,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getTry() {
+	public inline function getTry(): { e: LaxeExpr, catches: Array<Catch> } {
 		return switch(this.expr) {
 			case ETry(e, catches): { e: e, catches: catches };
 			case _: throw "Not an ETry";
@@ -444,7 +444,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getReturn() {
+	public inline function getReturn(): Null<LaxeExpr> {
 		return switch(this.expr) {
 			case EReturn(e): e;
 			case _: throw "Not an EReturn";
@@ -472,7 +472,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getUntyped() {
+	public inline function getUntyped(): LaxeExpr {
 		return switch(this.expr) {
 			case EUntyped(e): e;
 			case _: throw "Not an EUntyped";
@@ -486,7 +486,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getThrow() {
+	public inline function getThrow(): LaxeExpr {
 		return switch(this.expr) {
 			case EThrow(e): e;
 			case _: throw "Not an EThrow";
@@ -500,7 +500,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getCast() {
+	public inline function getCast(): { e: LaxeExpr, t: Null<ComplexType> } {
 		return switch(this.expr) {
 			case ECast(e, t): { e: e, t: t };
 			case _: throw "Not an ECast";
@@ -515,7 +515,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getDisplay() {
+	public inline function getDisplay(): { e: LaxeExpr, displayKind: DisplayKind } {
 		return switch(this.expr) {
 			case EDisplay(e, displayKind): { e: e, displayKind: displayKind };
 			case _: throw "Not an EDisplay";
@@ -529,7 +529,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getTernary() {
+	public inline function getTernary(): { econd: LaxeExpr, eif: LaxeExpr, eelse: LaxeExpr } {
 		return switch(this.expr) {
 			case ETernary(econd, eif, eelse): { econd: econd, eif: eif, eelse: eelse };
 			case _: throw "Not an ETernary";
@@ -543,7 +543,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getMeta() {
+	public inline function getMeta(): { s: MetadataEntry, e: LaxeExpr } {
 		return switch(this.expr) {
 			case EMeta(s, e): { s: s, e: e };
 			case _: throw "Not an EMeta";
@@ -557,7 +557,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
-	public inline function getIs() {
+	public inline function getIs(): { e: LaxeExpr, t: ComplexType } {
 		return switch(this.expr) {
 			case EIs(e, t): { e: e, t: t };
 			case _: throw "Not an EIs";

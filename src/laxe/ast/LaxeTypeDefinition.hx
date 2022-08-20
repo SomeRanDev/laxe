@@ -3,6 +3,9 @@ package laxe.ast;
 import haxe.macro.Context;
 import haxe.macro.Expr.ComplexType;
 import haxe.macro.Expr.TypeDefinition;
+import haxe.macro.Expr.TypePath;
+import haxe.macro.Expr.FieldType;
+import haxe.macro.Expr.Access;
 
 @:nullSafety(Strict)
 @:forward
@@ -25,7 +28,7 @@ abstract LaxeTypeDefinition(TypeDefinition) from TypeDefinition to TypeDefinitio
 		return result;
 	}
 
-	public function addVar(name: String, expr: Null<LaxeExpr> = null, type: Null<ComplexType> = null) {
+	public function addVar(name: String, expr: Null<LaxeExpr> = null, type: Null<ComplexType> = null): Void {
 		this.fields.push({
 			name: name,
 			pos: expr != null ? expr.pos : this.pos,
@@ -34,7 +37,7 @@ abstract LaxeTypeDefinition(TypeDefinition) from TypeDefinition to TypeDefinitio
 		});
 	}
 
-	public function addFunction(expr: LaxeExpr, name: Null<String> = null) {
+	public function addFunction(expr: LaxeExpr, name: Null<String> = null): Void {
 		switch(expr.expr) {
 			case EFunction(kind, f): {
 				final inferName = switch(kind) {
@@ -95,7 +98,7 @@ abstract LaxeTypeDefinition(TypeDefinition) from TypeDefinition to TypeDefinitio
 		}
 	}
 
-	public inline function getClass() {
+	public inline function getClass(): { superClass: Null<TypePath>, interfaces: Null<Array<TypePath>>, isInterface: Bool, isFinal: Bool, isAbstract: Bool } {
 		return switch(this.kind) {
 			case TDClass(superClass, interfaces, isInterface, isFinal, isAbstract): {
 				superClass: superClass,
@@ -115,7 +118,7 @@ abstract LaxeTypeDefinition(TypeDefinition) from TypeDefinition to TypeDefinitio
 		}
 	}
 
-	public inline function getTypedef() {
+	public inline function getTypedef(): ComplexType {
 		return switch(this.kind) {
 			case TDAlias(t): t;
 			case _: throw "Not a TDAlias";
@@ -129,7 +132,7 @@ abstract LaxeTypeDefinition(TypeDefinition) from TypeDefinition to TypeDefinitio
 		}
 	}
 
-	public inline function getWrapper() {
+	public inline function getWrapper(): { tthis: Null<ComplexType>, from: Array<ComplexType>, to: Array<ComplexType> } {
 		return switch(this.kind) {
 			case TDAbstract(tthis, from, to): {
 				tthis: tthis,
@@ -147,7 +150,7 @@ abstract LaxeTypeDefinition(TypeDefinition) from TypeDefinition to TypeDefinitio
 		}
 	}
 
-	public inline function getField() {
+	public inline function getField(): { kind: FieldType, access: Null<Array<Access>> } {
 		return switch(this.kind) {
 			case TDField(kind, access): {
 				kind: kind,

@@ -1,0 +1,22 @@
+class Macros_StrReturn extends Test.LaxeTest:
+	override def test:
+		assert(genBool! == false)
+
+		assert(addTwoNums!(3, 3) == 6)
+
+		var amount = 0
+		repeat!(amount++, 3)
+		assert(amount == 3)
+
+macro genBool -> str:
+	return "false"
+
+macro addTwoNums(first: int, second: int) -> str:
+	return first + " + " + second
+
+macro repeat(e: expr`, amount: int) -> str[]:
+	const exprStr = e.toString()
+	const result = []
+	for i in 0...amount:
+		result.push(exprStr)
+	return result

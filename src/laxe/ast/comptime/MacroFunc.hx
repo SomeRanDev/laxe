@@ -26,7 +26,7 @@ class MacroFunc extends CompTimeFunc {
 		this.retType = retType;
 		this.pos = pos;
 
-		verifyReturnType();
+		verifyReturnType(retType);
 		makeCallable();
 	}
 
@@ -34,8 +34,8 @@ class MacroFunc extends CompTimeFunc {
 		return "macro";
 	}
 
-	function verifyReturnType() {
-		return switch(retType) {
+	function verifyReturnType(t: ComplexType): Bool {
+		final result = switch(t) {
 			case TPath({ name: "String", pack: [], sub: null }): {
 				isStringReturn = true;
 				true;
@@ -45,11 +45,32 @@ class MacroFunc extends CompTimeFunc {
 				isStringReturn = false;
 				true;
 			}
+			case TPath(typePath) if(
+					typePath.pack.length == 0 &&
+					typePath.name == "Array" &&
+					typePath.sub == null &&
+					typePath.params != null &&
+					typePath.params.length == 1
+				): {
+				switch(typePath.params[0]) {
+					case TPType(t2): {
+						verifyReturnType(t2);
+					}
+					case TPExpr(e): {
+						false;
+					}
+				}
+			}
 			case _: {
-				error("Macro functions must explicitly have a return type of either expr` or str", pos);
 				false;
 			}
 		}
+
+		if(result == false) {
+			error("Macro functions must explicitly have a return type of either expr`, expr`[], str, or str[]", pos);
+		}
+
+		return result;
 	}
 
 	function makeCallable() {
@@ -70,16 +91,39 @@ class MacroFunc extends CompTimeFunc {
 	public function call(mPointer: MacroPointer): Null<Expr> {
 		return if(func == null) {
 			null;
-		} else if(hasArguments) {
-			final args = convertArguments(mPointer.params, mPointer.pos);
-			Reflect.callMethod(null, func, args);
 		} else {
-			final result: Null<Dynamic> = func();
-			if(Std.isOfType(result, String)) {
-				laxe.ast.LaxeExpr.fromString(result);
+			final result: Null<Dynamic> = if(hasArguments) {
+				final args = convertArguments(mPointer.params, mPointer.pos);
+				Reflect.callMethod(null, func, args);
 			} else {
-				result;
+				func();
 			}
+			convertDynToExpr(result);
+		}
+	}
+
+	function convertDynToExpr(d: Dynamic): Expr {
+		return if(Std.isOfType(d, Array)) {
+			var pos = null;
+			if(pos == null) {
+				pos = DecorManager.ProcessingPosition;
+			}
+			if(pos == null) {
+				pos = Context.currentPos();
+			}
+			final exprArr = d.map(mem -> convertDynToExpr(mem));
+			if(exprArr.contains(null)) {
+				null;
+			} else {
+				{
+					expr: EBlock(exprArr),
+					pos: pos
+				}
+			}
+		} else if(Std.isOfType(d, String)) {
+			laxe.ast.LaxeExpr.fromString(d);
+		} else {
+			d;
 		}
 	}
 }
