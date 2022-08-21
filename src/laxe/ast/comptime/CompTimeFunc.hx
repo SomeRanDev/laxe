@@ -66,7 +66,7 @@ class CompTimeFunc {
 		final result: Array<Dynamic> = [];
 		var index = 0;
 		for(a in arguments) {
-			final isRestType = isRest(a.arg.type);
+			final isRestType = a.arg.type == null ? null : isRest(a.arg.type);
 			if(isRestType != null) {
 				if(inputArgs != null) {
 					final restInputs = [];

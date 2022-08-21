@@ -27,7 +27,7 @@ enum Color:
 	Blue(int, int);
 
 	def toString:
-		return switch this:
+		return switch self:
 			case Red: "red";
 			case Green(_): "green";
 			case Blue(_, _): "blue";

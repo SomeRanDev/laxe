@@ -484,6 +484,8 @@ class ModuleParser {
 
 		final isClass = classTypeName == "class";
 
+		p.setAllowSelf(true);
+
 		if(p.findAndParseNextContent(";")) {
 		} else if(p.findAndParseNextContent(":")) {
 			final currentLine = p.lineNumber;
@@ -561,6 +563,8 @@ class ModuleParser {
 				}
 			}
 		}
+
+		p.setAllowSelf(false);
 
 		return fields;
 	}

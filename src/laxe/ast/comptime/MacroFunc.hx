@@ -15,7 +15,8 @@ class MacroFunc extends CompTimeFunc {
 	var retType: Null<ComplexType>;
 	var pos: Position;
 
-	var isStringReturn: Bool;
+	public var isStringReturn(default, null): Bool;
+	public var isExtension(default, null): Bool;
 
 	var func: () -> Dynamic;
 
@@ -26,12 +27,34 @@ class MacroFunc extends CompTimeFunc {
 		this.retType = retType;
 		this.pos = pos;
 
+		checkIsExtension();
 		verifyReturnType(retType);
 		makeCallable();
 	}
 
 	override function metaType() {
 		return "macro";
+	}
+
+	function checkIsExtension() {
+		if(hasArguments) {
+			final a = arguments[0];
+			if(a.arg.name == "self") {
+				final t = a.arg.type;
+				switch(t) {
+					case null | TPath({ pack: ["laxe", "ast"], name: "LaxeExpr" }): {
+						isExtension = true;
+					}
+					case _: {
+						var pos = a.typePos;
+						if(pos == null) pos = a.identPos;
+						error("Self argument must be of type expr`", pos);
+					}
+				}
+			} else {
+				isExtension = false;
+			}
+		}
 	}
 
 	function verifyReturnType(t: ComplexType): Bool {
@@ -88,15 +111,20 @@ class MacroFunc extends CompTimeFunc {
 		func = Eval.exprToFunction(funcExpr);
 	}
 
-	public function call(mPointer: MacroPointer): Null<Expr> {
+	public function call(mPointer: MacroPointer, callee: Null<Expr>): Null<Expr> {
 		return if(func == null) {
 			null;
 		} else {
 			final result: Null<Dynamic> = if(hasArguments) {
-				final args = convertArguments(mPointer.params, mPointer.pos);
+				final argInput = callee == null ? mPointer.params : [callee].concat(mPointer.params);
+				var args = convertArguments(argInput, mPointer.pos);
 				Reflect.callMethod(null, func, args);
 			} else {
-				func();
+				if(callee != null) {
+					Reflect.callMethod(null, func, [callee]);
+				} else {
+					func();
+				}
 			}
 			convertDynToExpr(result);
 		}

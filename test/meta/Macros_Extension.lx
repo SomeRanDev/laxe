@@ -1,0 +1,9 @@
+class Macros_Extension extends Test.LaxeTest:
+	override def test:
+		assert(4.add!(4) == 8)
+		assert("Hello".add!(" world!") == "Hello world!")
+
+macro add(self, other: expr`) -> expr`:
+	return template expr:
+		$self + $other
+

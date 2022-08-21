@@ -60,6 +60,8 @@ class Parser {
 	public var ended(default, null): Bool = false;
 	public var lineNumber(default, null): Int = 0;
 
+	public var allowSelf(default, null): Bool = false;
+
 	var nextIdentifier: String = "";
 	var nextIdentifierPos: Null<Position> = null;
 	var nextIdentifierIndex: Int = -1;
@@ -93,6 +95,11 @@ class Parser {
 	public function getIndex(): Int { return index; }
 	public function getContent(): String { return content; }
 	public function getIndent(): String { return lineIndent; }
+
+	// self
+	public function setAllowSelf(v: Bool) {
+		allowSelf = v;
+	}
 
 	// decor
 	public function addExprDecorPointer(d: DecorPointer) {
@@ -620,6 +627,7 @@ class Parser {
 
 			if(!findAndParseNextContent(")")) {
 				while(!ended) {
+					parseWhitespaceOrComments();
 					final isRest = parseNextContent("...");
 					final ident = parseNextIdent();
 					if(ident == null) {

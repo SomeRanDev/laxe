@@ -33,7 +33,7 @@ class ValueParser {
 		while(result == null && count <= 9) {
 			switch(count) {
 				case 0: result = parseNextNull();
-				case 1: result = parseNextThis();
+				case 1: result = parseNextSelf();
 				case 2: result = parseNextBoolean();
 				case 3: result = parseArrayLiteral();
 				case 4: result = parseAnonObjectLiteral();
@@ -60,8 +60,11 @@ class ValueParser {
 		return null;
 	}
 
-	public function parseNextThis(): Null<Expr> {
-		final word = parser.tryParseOneIdent("this", "self");
+	public function parseNextSelf(): Null<Expr> {
+		if(!parser.allowSelf) {
+			return null;
+		}
+		final word = parser.tryParseOneIdent("self");
 		if(word != null) {
 			return {
 				expr: EConst(CIdent("this")),
@@ -239,6 +242,7 @@ class ValueParser {
 				case "expr`": macro laxe.ast.LaxeExpr;
 				case "typeDef`": macro laxe.ast.LaxeTypeDefinition;
 				case "field`": macro laxe.ast.LaxeField;
+				case "this": macro this_;
 				case _: null;
 			}
 			if(e != null) {

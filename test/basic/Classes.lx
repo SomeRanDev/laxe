@@ -9,7 +9,6 @@ class Classes extends Test.LaxeTest:
 	override def test:
 		assert(myConst == "ConstVal")
 		assert(self.myConst == "ConstVal")
-		assert(this.myConst == "ConstVal")
 
 		assert(myMut == 5)
 		myMut *= 5

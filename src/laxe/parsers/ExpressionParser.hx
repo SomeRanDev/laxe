@@ -814,35 +814,63 @@ class ExpressionParser {
 			}
 			final pos = p.makePosition(startIndex);
 
+			var calleeExpr: Null<Expr> = null;
+			var macroName: Null<StringAndPos> = null;
+			var assumeExtension = false;
 			function getPath(e: Expr, list: Array<StringAndPos>) {
 				return switch(e.expr) {
 					case EConst(CIdent(c)): {
-						list.push({ ident: c, pos: e.pos });
+						final pathStrAndPos = { ident: c, pos: e.pos };
+						if(macroName == null) {
+							macroName = pathStrAndPos;
+						}
+						list.push(pathStrAndPos);
 						list;
 					}
 					case EField(e2, field): {
+						final pathStrAndPos = { ident: field, pos: e.pos };
+						if(macroName == null) {
+							macroName = pathStrAndPos;
+							calleeExpr = e2;
+						}
 						getPath(e2, list);
-						list.push({ ident: field, pos: e.pos });
+						list.push(pathStrAndPos);
 						list;
 					}
 					case _: {
-						p.error("Invalid macro call on this expression", e.pos);
+						//p.error("Invalid macro call on this expression", e.pos);
+						if(calleeExpr == null) {
+							calleeExpr = e;
+						}
+						assumeExtension = true;
 						list;
 					}
 				}
 			}
 
-			final result = {
-				expr: EConst(CIdent("null")),//ECall(e, exprs),
-				pos: pos
-			};
+			// There are two types of macro calls.
+			// Alone, or extensions.
+			// i.e. myMacro!()  vs.  (1 + 2).myMacro!()
+			// If the entire expression is just CIdent + EFields, we will assume it's a direct macro call.
+			// Otherwise, we assume it's an extension call.
 
-			final pathMembers = getPath(e, [] );
-			final mp = new MacroPointer(TypeParser.convertIdentListToTypePath(p, pathMembers), pos, exprs);
-			mp.setExpr(result);
+			var pathMembers = getPath(e, []);
+
+			final resultExpr = if(assumeExtension) {
+				pathMembers = [macroName];
+				calleeExpr;
+			} else {
+				{
+					expr: EConst(CIdent("null")),
+					pos: pos
+				};
+			}
+
+			final mp = new MacroPointer(TypeParser.convertIdentListToTypePath(p, pathMembers), pos, exprs, calleeExpr, assumeExtension);
+			mp.setExpr(resultExpr);
 			p.addExprMacroPointer(mp);
 
-			return post_expr(p, result);
+			return post_expr(p, resultExpr);
 		}
 
 		// ***************************************

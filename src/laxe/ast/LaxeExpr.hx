@@ -206,6 +206,20 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
+	public inline function isConstString(): Bool {
+		return switch(this.expr) {
+			case EConst(CString(_)): true;
+			case _: false;
+		}
+	}
+
+	public inline function getConstString(): String {
+		return switch(this.expr) {
+			case EConst(CString(s)): s;
+			case _: throw "Not a EConst(CString(_))";
+		}
+	}
+
 	public inline function isArrayAccess(): Bool {
 		return switch(this.expr) {
 			case EArray(_, _): true;
