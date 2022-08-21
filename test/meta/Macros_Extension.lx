@@ -3,7 +3,19 @@ class Macros_Extension extends Test.LaxeTest:
 		assert(4.add!(4) == 8)
 		assert("Hello".add!(" world!") == "Hello world!")
 
+		assert("%1 - %2".format!(12, 24) == "12 - 24")
+
 macro add(self, other: expr`) -> expr`:
 	return template expr:
 		$self + $other
 
+macro format(self: expr`, ...args: int) -> expr`:
+	return if self.isConstString():
+		var i = 0
+		var string: str = self.getConstString()
+		for a in args:
+			string = StringTools.replace(string, "%" + (i + 1), "" + a)
+			i++
+		template expr: $v{string}
+	else:
+		self
