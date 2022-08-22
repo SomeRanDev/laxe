@@ -239,9 +239,9 @@ class ValueParser {
 
 		if(result != null) {
 			final e = switch(result.ident) {
-				case "expr`": macro laxe.ast.LaxeExpr;
-				case "typeDef`": macro laxe.ast.LaxeTypeDefinition;
-				case "field`": macro laxe.ast.LaxeField;
+				case "expr`": macro laxe.stdlib.LaxeExpr;
+				case "typeDef`": macro laxe.stdlib.LaxeTypeDefinition;
+				case "field`": macro laxe.stdlib.LaxeField;
 				case "this": macro this_;
 				case _: null;
 			}
@@ -380,10 +380,24 @@ class ValueParser {
 				}
 			}
 		}
-		return result == null ? null : {
-			expr: EConst(CString(result, isSingle ? SingleQuotes : DoubleQuotes)),
-			pos: parser.makePosition(startIndex)
-		};
+
+		return if(result != null) {
+			final pos = parser.makePosition(startIndex);
+			final strExpr = {
+				expr: EConst(CString(result, isSingle ? SingleQuotes : DoubleQuotes)),
+				pos: pos
+			};
+			if(parser.castStringsToLaxeStr) {
+				{
+					expr: ECheckType(strExpr, macro : laxe.stdlib.LaxeString),
+					pos: pos
+				};
+			} else {
+				strExpr;
+			}
+		} else {
+			null;
+		}
 	}
 
 	public function validEscapeCharacters(): Array<String> {

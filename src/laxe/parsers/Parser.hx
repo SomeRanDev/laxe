@@ -61,6 +61,7 @@ class Parser {
 	public var lineNumber(default, null): Int = 0;
 
 	public var allowSelf(default, null): Bool = false;
+	public var castStringsToLaxeStr(default, null): Bool = true;
 
 	var nextIdentifier: String = "";
 	var nextIdentifierPos: Null<Position> = null;
@@ -99,6 +100,11 @@ class Parser {
 	// self
 	public function setAllowSelf(v: Bool) {
 		allowSelf = v;
+	}
+
+	// laxe strings
+	public function setCastStringsToLaxe(v: Bool) {
+		castStringsToLaxeStr = v;
 	}
 
 	// decor

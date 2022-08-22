@@ -42,7 +42,7 @@ class MacroFunc extends CompTimeFunc {
 			if(a.arg.name == "self") {
 				final t = a.arg.type;
 				switch(t) {
-					case null | TPath({ pack: ["laxe", "ast"], name: "LaxeExpr" }): {
+					case null | TPath({ pack: ["laxe", "stdlib"], name: "LaxeExpr" }): {
 						isExtension = true;
 					}
 					case _: {
@@ -59,12 +59,13 @@ class MacroFunc extends CompTimeFunc {
 
 	function verifyReturnType(t: ComplexType): Bool {
 		final result = switch(t) {
-			case TPath({ name: "String", pack: [], sub: null }): {
+			case TPath({ name: "String", pack: [], sub: null }) |
+				TPath({ pack: ["laxe", "stdlib"], name: "LaxeString", sub: null }): {
 				isStringReturn = true;
 				true;
 			}
 			case TPath({ pack: ["haxe", "macro"], name: "Expr", sub: null }) |
-				TPath({ pack: ["laxe", "ast"], name: "LaxeExpr", sub: null }): {
+				TPath({ pack: ["laxe", "stdlib"], name: "LaxeExpr", sub: null }): {
 				isStringReturn = false;
 				true;
 			}
@@ -149,7 +150,7 @@ class MacroFunc extends CompTimeFunc {
 				}
 			}
 		} else if(Std.isOfType(d, String)) {
-			laxe.ast.LaxeExpr.fromString(d);
+			laxe.stdlib.LaxeExpr.fromString(d);
 		} else {
 			d;
 		}

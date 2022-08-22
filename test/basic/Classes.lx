@@ -4,7 +4,10 @@ class Classes extends Test.LaxeTest:
 	var myMut = 5
 
 	# Laxe automatically initializes some types
-	var nonInit: str
+	var nonInitInt: int
+	var nonInitFloat: float
+	var nonInitStr: str
+	var nonInitBool: bool
 
 	override def test:
 		assert(myConst == "ConstVal")
@@ -14,7 +17,10 @@ class Classes extends Test.LaxeTest:
 		myMut *= 5
 		assert(myMut == 25)
 
-		assert(nonInit == "")
+		assert(nonInitInt == 0)
+		assert(nonInitFloat == 0.0)
+		assert(nonInitStr == "")
+		assert(nonInitBool == false)
 
 		const cls = new TestClass()
 		cls.add()

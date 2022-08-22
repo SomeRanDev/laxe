@@ -94,37 +94,40 @@ class TypeParser {
 			}
 		}
 
-		if(idents.length == 1) {
-			if(startsWithLowerCase(idents[0].ident)) {
-				switch(idents[0].ident) {
-					case "expr`": {
-						return TPath({ pack: ["laxe", "ast"], name: "LaxeExpr" });
-					}
-					case "typeDef`": {
-						return TPath({ pack: ["laxe", "ast"], name: "LaxeTypeDefinition" });
-					}
-					case "field`": {
-						return TPath({ pack: ["laxe", "ast"], name: "LaxeField" });
-					}
+		final typePath: TypePath = if(idents.length == 1 && startsWithLowerCase(idents[0].ident)) {
+			switch(idents[0].ident) {
+				case "expr`": {
+					{ pack: ["laxe", "stdlib"], name: "LaxeExpr" };
 				}
-
-				final name = switch(idents[0].ident) {
-					case "int": "Int";
-					case "float": "Float";
-					case "bool": "Bool";
-					case "str": "String";
-					case "void": "Void";
-					case "dyn": "Dynamic";
-					case "any": "Any";
-					case _: null;
+				case "typeDef`": {
+					{ pack: ["laxe", "stdlib"], name: "LaxeTypeDefinition" };
 				}
-				if(name != null) {
-					idents = [{ ident: name, pos: idents[0].pos }];
+				case "field`": {
+					{ pack: ["laxe", "stdlib"], name: "LaxeField" };
+				}
+				case "str": {
+					{ pack: ["laxe", "stdlib"], name: "LaxeString" };
+				}
+				case _: {
+					final name = switch(idents[0].ident) {
+						case "int": "Int";
+						case "float": "Float";
+						case "bool": "Bool";
+						case "str": "String";
+						case "void": "Void";
+						case "dyn": "Dynamic";
+						case "any": "Any";
+						case _: null;
+					}
+					if(name != null) {
+						idents = [{ ident: name, pos: idents[0].pos }];
+					}
+					convertIdentListToTypePath(p, idents);
 				}
 			}
+		} else {
+			convertIdentListToTypePath(p, idents);
 		}
-
-		final typePath = convertIdentListToTypePath(p, idents);
 
 		typePath.params = null;
 		if(p.findAndParseNextContent("<")) {

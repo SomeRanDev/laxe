@@ -2,7 +2,7 @@ package laxe.ast;
 
 #if (macro || laxeRuntime)
 
-import laxe.ast.LaxeTypeDefinition;
+import laxe.stdlib.LaxeTypeDefinition;
 
 import laxe.parsers.ModuleParser;
 

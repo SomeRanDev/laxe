@@ -16,7 +16,7 @@ import laxe.ast.Operators.InfixOperators;
 import laxe.ast.Operators.SuffixOperators;
 import laxe.ast.Operators.IntervalOperator;
 
-import laxe.ast.LaxeExpr;
+import laxe.stdlib.LaxeExpr;
 
 @:nullSafety(Strict)
 class ExpressionParser {
@@ -444,6 +444,11 @@ class ExpressionParser {
 
 						if(p.tryParseIdent("case") != null) {
 							if(p.getIndent() == caseIndent) {
+
+								// Pattern matching gets messed up when the raw strings are type-checked.
+								// So when parsing cases, we do not cast raw strings to laxe-strings.
+								p.setCastStringsToLaxe(false);
+
 								final values = [expr(p)];
 								while(true) {
 									if(p.findAndParseNextContent("|")) {
@@ -452,6 +457,8 @@ class ExpressionParser {
 										break;
 									}
 								}
+
+								p.setCastStringsToLaxe(true);
 
 								final guard = if(p.tryParseIdent("if") != null) {
 									expr(p);
@@ -554,6 +561,20 @@ class ExpressionParser {
 				return {
 					expr: EReturn(e),
 					pos: e != null ? (p.mergePos(returnKey.pos, e.pos)) : (returnKey.pos)
+				};
+			}
+		}
+
+		// ***************************************
+		// * Cast expression
+		// ***************************************
+		{
+			final castKey = p.tryParseIdent("cast");
+			if(castKey != null) {
+				final e = expr(p);
+				return {
+					expr: ECast(e, null),
+					pos: p.mergePos(castKey.pos, e.pos)
 				};
 			}
 		}
@@ -781,16 +802,25 @@ class ExpressionParser {
 		}
 
 		// ***************************************
-		// * as Operator
+		// * as, castas, is Operators
 		// ***************************************
-		if(p.tryParseIdent("as") != null) {
-			final type = p.parseNextType();
-			final pos = p.makePosition(startIndex);
-
-			return post_expr(p, {
-				expr: ECheckType(e, type),
-				pos: pos
-			});
+		{
+			final ident = p.tryParseOneIdent("as", "castas", "is");
+			if(ident != null) {
+				final type = p.parseNextType();
+				final pos = p.makePosition(startIndex);
+	
+				return post_expr(p, {
+					expr: if(ident.ident == "as") {
+						ECheckType(e, type);
+					} else if(ident.ident == "castas") {
+						ECast(e, type);
+					} else {
+						EIs(e, type);
+					},
+					pos: pos
+				});
+			}
 		}
 
 		// ***************************************

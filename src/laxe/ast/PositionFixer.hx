@@ -5,6 +5,9 @@ package laxe.ast;
 import haxe.macro.Expr;
 import haxe.macro.Context;
 
+import laxe.stdlib.LaxeField;
+import laxe.stdlib.LaxeTypeDefinition;
+
 class PositionFixer {
     public static inline function fix(p: Dynamic): Position {
         if(Type.getClassName(Type.getClass(p)) == null) {

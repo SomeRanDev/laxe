@@ -1,0 +1,14 @@
+class String extends Test.LaxeTest:
+	override def test:
+		const myStr = "This is a string."
+
+		assert(myStr.contains("string"))
+		assert(!myStr.contains("int"))
+
+		assert(myStr.replace("string", "message") == "This is a message.")
+
+		assert(myStr.startsWith("This"))
+		assert(myStr.endsWith("."))
+
+		assert(myStr.isSpace(4))
+		assert(!myStr.isSpace(0))

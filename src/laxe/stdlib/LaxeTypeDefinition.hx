@@ -1,4 +1,4 @@
-package laxe.ast;
+package laxe.stdlib;
 
 import haxe.macro.Context;
 import haxe.macro.Expr.ComplexType;

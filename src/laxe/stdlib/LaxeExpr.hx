@@ -1,7 +1,10 @@
-package laxe.ast;
+package laxe.stdlib;
 
+import haxe.macro.ComplexTypeTools;
 import haxe.macro.Expr;
 import haxe.macro.Context;
+
+import laxe.ast.DecorManager;
 
 @:nullSafety(Strict)
 @:forward
@@ -60,11 +63,33 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 			case EMeta(s, e): {
 				if(s.params != null) {
 					final pStr = s.params.map(p -> normalExprToString(p)).join(", ");
-					'@"${s.name}"(${pStr})\n' + normalExprToString(e);
+					'@"${s.name}"(${pStr}) ' + normalExprToString(e);
 				} else {
-					'@"${s.name}"\n' + normalExprToString(e);
+					'@"${s.name}" ' + normalExprToString(e);
 				}
 			}
+
+			case ECheckType(e, t): {
+				switch [e.expr, t] {
+					case [EConst(CString(s, kind)), TPath({ pack: ["laxe", "stdlib"], name: "LaxeString", sub: null })]: {
+						normalExprToString(e);
+					}
+					case _: {
+						normalExprToString(e) + " as " + ComplexTypeTools.toString(t);
+					}
+				}
+			}
+			case ECast(e, t): {
+				if(t != null) {
+					normalExprToString(e) + " castas " + ComplexTypeTools.toString(t);
+				} else {
+					"cast " + normalExprToString(e);
+				}
+			}
+			case EIs(e, t): {
+				normalExprToString(e) + " is " + ComplexTypeTools.toString(t);
+			}
+
 			case _: {
 				haxe.macro.ExprTools.toString(this);
 			}
@@ -209,6 +234,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 	public inline function isConstString(): Bool {
 		return switch(this.expr) {
 			case EConst(CString(_)): true;
+			case ECheckType({ expr: EConst(CString(_)) }, TPath({ pack: ["laxe", "stdlib"], name: "LaxeString" })): true;
 			case _: false;
 		}
 	}
@@ -216,6 +242,7 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 	public inline function getConstString(): String {
 		return switch(this.expr) {
 			case EConst(CString(s)): s;
+			case ECheckType({ expr: EConst(CString(s)) }, TPath({ pack: ["laxe", "stdlib"], name: "LaxeString" })): s;
 			case _: throw "Not a EConst(CString(_))";
 		}
 	}

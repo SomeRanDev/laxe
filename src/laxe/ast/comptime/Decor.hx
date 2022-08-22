@@ -64,7 +64,7 @@ class Decor extends CompTimeFunc {
 		return onExpr != null;
 	}
 
-	public function callOnExpr(dPointer: DecorPointer, e: laxe.ast.LaxeExpr) {
+	public function callOnExpr(dPointer: DecorPointer, e: laxe.stdlib.LaxeExpr) {
 		if(hasArguments) {
 			final args = [(e : Dynamic)].concat(convertPointerArguments(dPointer));
 			return Reflect.callMethod(null, onExpr, args);
@@ -100,7 +100,7 @@ class Decor extends CompTimeFunc {
 		return onTypeDef != null;
 	}
 
-	public function callOnTypeDef(dPointer: DecorPointer, td: laxe.ast.LaxeTypeDefinition) {
+	public function callOnTypeDef(dPointer: DecorPointer, td: laxe.stdlib.LaxeTypeDefinition) {
 		if(hasArguments) {
 			final args = [(td : Dynamic)].concat(convertPointerArguments(dPointer));
 			return Reflect.callMethod(null, onTypeDef, args);
@@ -132,7 +132,7 @@ class Decor extends CompTimeFunc {
 		return onField != null;
 	}
 
-	public function callOnField(dPointer: DecorPointer, f: laxe.ast.LaxeField) {
+	public function callOnField(dPointer: DecorPointer, f: laxe.stdlib.LaxeField) {
 		if(hasArguments) {
 			final args = [(f : Dynamic)].concat(convertPointerArguments(dPointer));
 			return Reflect.callMethod(null, onField, args);
@@ -162,7 +162,7 @@ class Decor extends CompTimeFunc {
 
 	function isComplexTypeExpr(c: Null<ComplexType>) {
 		return switch(c) {
-			case TPath({ name: "LaxeExpr", pack: ["laxe", "ast"], sub: null, params: null }): {
+			case TPath({ name: "LaxeExpr", pack: ["laxe", "stdlib"], sub: null, params: null }): {
 				true;
 			}
 			case _: false;

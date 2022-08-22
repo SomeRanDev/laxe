@@ -109,8 +109,9 @@ class CompTimeFunc {
 			case TParent(t2): isValidDecorArgument(t2);
 			case TOptional(t2): isValidDecorArgument(t2);
 			case TNamed(_, t2): isValidDecorArgument(t2);
-			case TPath({ pack: ["laxe", "ast"], name: "LaxeExpr" }): true;
+			case TPath({ pack: ["laxe", "stdlib"], name: "LaxeExpr" }): true;
 			case TPath({ pack: ["haxe", "macro"], name: "Expr" }): true;
+			case TPath({ pack: ["laxe", "stdlib"], name: "LaxeString" }): true;
 			case TPath({ pack: ["haxe"], name: "Rest", params: p }) if(p != null && p.length == 1): {
 				switch(p[0]) {
 					case TPType(paramType): {
@@ -157,8 +158,9 @@ class CompTimeFunc {
 			case TParent(t2): getDecorArgumentType(t2);
 			case TOptional(t2): getDecorArgumentType(t2);
 			case TNamed(_, t2): getDecorArgumentType(t2);
-			case TPath({ pack: ["laxe", "ast"], name: "LaxeExpr" }): "expr";
+			case TPath({ pack: ["laxe", "stdlib"], name: "LaxeExpr" }): "expr";
 			case TPath({ pack: ["haxe", "macro"], name: "Expr" }): "expr";
+			case TPath({ pack: ["laxe", "stdlib"], name: "LaxeString" }): "str";
 			case TPath(p): {
 				if(p.pack.length == 0 && p.sub == null) {
 					switch(p.name) {
@@ -224,6 +226,7 @@ class CompTimeFunc {
 			case "str": {
 				switch(input.expr) {
 					case EConst(CString(s, kind)): s;
+					case ECheckType({ expr: EConst(CString(s, kind)) }, t): s;
 					case _: throw error("str expected", input.pos);
 				}
 			}

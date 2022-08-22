@@ -14,7 +14,7 @@ macro format(self: expr`, ...args: int) -> expr`:
 		var i = 0
 		var string: str = self.getConstString()
 		for a in args:
-			string = StringTools.replace(string, "%" + (i + 1), "" + a)
+			string = string.replace("%" + (i + 1), "" + a)
 			i++
 		template expr: $v{string}
 	else:
