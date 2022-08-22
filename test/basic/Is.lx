@@ -1,0 +1,10 @@
+class Is extends Test.LaxeTest:
+	override def test:
+		const value = 12
+		assert(value is int)
+		assert(value is float)
+		assert(!(value is str))
+
+		const str = "A text thing"
+		assert(str is str)
+		assert(!(str is int))

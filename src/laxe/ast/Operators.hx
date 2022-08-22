@@ -51,7 +51,7 @@ final InfixOperators: Array<Operator> = [
 
 	IntervalOperator,
 	new Operator("in", "in", 2, true),
-	new Operator("is", "is", 2, true),
+	//new Operator("is", "is", 2, true),
 
 	new Operator("assign", "=", 1),
 	new Operator("addAssign", "+=", 1),

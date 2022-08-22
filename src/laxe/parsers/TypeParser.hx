@@ -106,7 +106,11 @@ class TypeParser {
 					{ pack: ["laxe", "stdlib"], name: "LaxeField" };
 				}
 				case "str": {
-					{ pack: ["laxe", "stdlib"], name: "LaxeString" };
+					if(p.useHaxeTypesForPrims) {
+						{ pack: [], name: "String" };
+					} else {
+						{ pack: ["laxe", "stdlib"], name: "LaxeString" };
+					}
 				}
 				case _: {
 					final name = switch(idents[0].ident) {

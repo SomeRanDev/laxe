@@ -807,8 +807,16 @@ class ExpressionParser {
 		{
 			final ident = p.tryParseOneIdent("as", "castas", "is");
 			if(ident != null) {
+				// The "is" operator does not work with abstracts.
+				// Since a couple of Laxe primitives use abstracts that wrap Haxe types,
+				// we want to get the internal Haxe type.
+				final isOp = ident.ident == "is";
+				if(isOp) p.setUseHaxeTypesForPrims(true);
+
 				final type = p.parseNextType();
 				final pos = p.makePosition(startIndex);
+
+				if(isOp) p.setUseHaxeTypesForPrims(false);
 	
 				return post_expr(p, {
 					expr: if(ident.ident == "as") {

@@ -62,6 +62,7 @@ class Parser {
 
 	public var allowSelf(default, null): Bool = false;
 	public var castStringsToLaxeStr(default, null): Bool = true;
+	public var useHaxeTypesForPrims(default, null): Bool = false;
 
 	var nextIdentifier: String = "";
 	var nextIdentifierPos: Null<Position> = null;
@@ -105,6 +106,11 @@ class Parser {
 	// laxe strings
 	public function setCastStringsToLaxe(v: Bool) {
 		castStringsToLaxeStr = v;
+	}
+
+	// primtives to haxe types
+	public function setUseHaxeTypesForPrims(v: Bool) {
+		useHaxeTypesForPrims = v;
 	}
 
 	// decor
