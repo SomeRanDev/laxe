@@ -1,4 +1,0 @@
-class TestSyntax extends Test.LaxeTest:
-	override def test:
-		#trace("fjdkslfsdj");
-		#assert(false);
