@@ -1,0 +1,16 @@
+class Tuple extends Test.LaxeTest:
+	override def test:
+		const tuple = (10, 20)
+		assert(tuple.0 == 10)
+		assert(tuple.1 == 20)
+
+		assert(tuple.component0() == 10)
+		assert(tuple.component1() == 20)
+
+		const strTuple = ("Hello", "there", "sir")
+		assert(strTuple.2 == "sir")
+
+		assert(getTuple().2)
+
+def getTuple() -> (int, str, bool):
+	return (-3, "I'm in a tuple!", true)

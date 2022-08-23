@@ -1,0 +1,18 @@
+class NamedTuple extends Test.LaxeTest:
+	override def test:
+		const named: (first: str, second: int) = ("content", 333)
+		assert(named.first == "content")
+		assert(named.second == 333)
+
+		const info = getDistAndDir(12, 32)
+		assert(Math.floor(info.dist) == 34)
+		assert(Math.floor(info.dir) == 69)
+
+		assert(tupleOfTuple().other.1 == 66)
+
+def getDistAndDir(x: float, y: float) -> (dist: float, dir: float):
+	const dist = Math.sqrt(x * x + y * y)
+	const dir = Math.atan2(y, x) * (180 / Math.PI)
+	return (dist, dir)
+
+def tupleOfTuple -> (other: (int, int), string: str) = ((33, 66), "99")

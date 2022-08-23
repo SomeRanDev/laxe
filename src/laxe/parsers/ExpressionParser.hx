@@ -93,7 +93,7 @@ class ExpressionParser {
 	static function isComponentAccess(fieldName: String) {
 		var result = true;
 		final firstCharCode = fieldName.charCodeAt(0);
-		if(firstCharCode >= 49 && firstCharCode <= 57) {
+		if(firstCharCode >= 48 && firstCharCode <= 57) {
 			for(i in 1...fieldName.length) {
 				final charCode = fieldName.charCodeAt(i);
 				if(charCode < 48 || charCode > 57) {

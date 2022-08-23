@@ -35,7 +35,9 @@ class Tuple {
 			.replace(".", "_")
 			.replace("<", "_")
 			.replace(">", "_")
-			.replace("-", "_");
+			.replace("-", "_")
+			.replace(",", "_")
+			.replace(" ", "");
 	}
 
 	static function getNamedTupleName(names: Array<String>, types: Array<ComplexType>) {
@@ -158,6 +160,26 @@ class Tuple {
 
 		return result;
 	}
+
+	// TODO: Allow named tuple values?
+	/*
+	public static function makeNamedTupleExpr(params: Array<Expr>, pos: Position): Expr {
+		final paramsLength = params.length;
+
+		if(paramsLength < minElements || paramsLength > maxElements) {
+			return { expr: EConst(CIdent("null")), pos: pos };
+		}
+
+		ensure(paramsLength);
+
+		final result = {
+			expr: ENew(generateTypePath(paramsLength), params),
+			pos: pos
+		};
+
+		return result;
+	}
+	*/
 
 	static function registerTuple(index: Int) {
 		while(tuplesCreated.length <= index) {
