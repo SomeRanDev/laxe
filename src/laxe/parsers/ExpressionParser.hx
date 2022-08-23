@@ -805,7 +805,7 @@ class ExpressionParser {
 		// * as, castas, is Operators
 		// ***************************************
 		{
-			final ident = p.tryParseOneIdent("as", "castas", "is");
+			final ident = p.tryParseOneIdent("the", "as", "is");
 			if(ident != null) {
 				// The "is" operator does not work with abstracts.
 				// Since a couple of Laxe primitives use abstracts that wrap Haxe types,
@@ -819,9 +819,9 @@ class ExpressionParser {
 				if(isOp) p.setUseHaxeTypesForPrims(false);
 	
 				return post_expr(p, {
-					expr: if(ident.ident == "as") {
+					expr: if(ident.ident == "the") {
 						ECheckType(e, type);
-					} else if(ident.ident == "castas") {
+					} else if(ident.ident == "as") {
 						ECast(e, type);
 					} else {
 						EIs(e, type);

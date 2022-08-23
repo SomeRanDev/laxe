@@ -75,13 +75,13 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 						normalExprToString(e);
 					}
 					case _: {
-						normalExprToString(e) + " as " + ComplexTypeTools.toString(t);
+						normalExprToString(e) + " the " + ComplexTypeTools.toString(t);
 					}
 				}
 			}
 			case ECast(e, t): {
 				if(t != null) {
-					normalExprToString(e) + " castas " + ComplexTypeTools.toString(t);
+					normalExprToString(e) + " as " + ComplexTypeTools.toString(t);
 				} else {
 					"cast " + normalExprToString(e);
 				}
