@@ -62,10 +62,14 @@ class CompTimeFunc {
 		}
 	}
 
-	function convertArguments(inputArgs: Null<Array<Expr>>, errorPos: Position): Array<Dynamic> {
+	function convertArguments(inputArgs: Null<Array<Expr>>, errorPos: Position, argumentsToProcess: Int = -1): Array<Dynamic> {
 		final result: Array<Dynamic> = [];
 		var index = 0;
 		for(a in arguments) {
+			if(argumentsToProcess > -1 && argumentsToProcess <= index) {
+				break;
+			}
+
 			final isRestType = a.arg.type == null ? null : isRest(a.arg.type);
 			if(isRestType != null) {
 				if(inputArgs != null) {

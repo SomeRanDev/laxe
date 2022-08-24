@@ -5,7 +5,10 @@ class Macros_Extension extends Test.LaxeTest:
 
 		assert("%1 - %2".format!(12, 24) == "12 - 24")
 
-macro add(self, other: expr`) -> expr`:
+		const testDotAccess = { some: { thing: 12 } }
+		assert(testDotAccess.some.thing.add!(100) == 112)
+
+macro add(self: expr`, other: expr`) -> expr`:
 	return template expr:
 		$self + $other
 

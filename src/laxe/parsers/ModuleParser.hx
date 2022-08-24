@@ -967,7 +967,7 @@ class ModuleParser {
 
 		final macroIdent = p.tryParseIdent("macro");
 		if(macroIdent != null) {
-			final funcData = p.parseFunctionAfterDef(true);
+			final funcData = p.parseFunctionAfterDef(true, true);
 			final m = new MacroFunc(
 				p,
 				funcData.n,

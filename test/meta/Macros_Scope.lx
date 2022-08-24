@@ -1,0 +1,37 @@
+class Macros_Scope extends Test.LaxeTest:
+	override def test:
+		var counter = 0
+		doTwice:
+			counter++
+		assert(counter == 2)
+
+		const arr = [0, 1, 2, 3, 4]
+		forloop(var i = 0, i < 5, i++):
+			assert(arr[i] == i)
+
+		var counter2 = 0
+		loopThroughNumbers(1, 3, 5, 7):
+			counter2 += i
+		assert(counter2 == 16)
+
+macro doTwice(scope: expr`) -> expr`:
+	return template expr:
+		$scope
+		$scope
+
+macro forloop(init: expr`, cond: expr`, inc: expr`, scope: expr`) -> expr`:
+	return template expr:
+		$init
+		while $cond:
+			$scope
+			$inc
+
+macro loopThroughNumbers(...numbers: int, scope: expr`) -> expr`[]:
+	const result = []
+	for num in numbers:
+		const e = template expr:
+			block:
+				const i = $v{num}
+				$scope
+		result.push(e)
+	return result

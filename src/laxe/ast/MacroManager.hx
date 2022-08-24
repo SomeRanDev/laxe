@@ -2,9 +2,9 @@ package laxe.ast;
 
 #if (macro || laxeRuntime)
 
-import laxe.stdlib.LaxeTypeDefinition;
-
 import laxe.parsers.ModuleParser;
+
+import laxe.stdlib.LaxeExpr;
 
 import haxe.macro.Expr;
 import haxe.macro.Context;
@@ -14,18 +14,20 @@ class MacroPointer {
 	public var pos(default, null): Position;
 	public var params(default, null): Null<Array<Expr>>;
 
-	public var callee(default, null): Null<Expr>;
+	public var callee(default, null): Null<LaxeExpr>;
 	public var isExtension(default, null): Bool;
+	public var scopeExpr(default, null): Null<LaxeExpr>;
 
-	public var targetExpr(default, null): Null<Expr> = null;
+	public var targetExpr(default, null): Null<LaxeExpr> = null;
 
-	public function new(path: TypePath, pos: Position, params: Null<Array<Expr>>, callee: Null<Expr>, isExtension: Bool) {
+	public function new(path: TypePath, pos: Position, params: Null<Array<Expr>>, callee: Null<Expr>, isExtension: Bool, scopeExpr: Null<Expr>) {
 		this.path = path;
 		this.pos = pos;
 		this.params = params;
 
 		this.callee = callee;
 		this.isExtension = isExtension;
+		this.scopeExpr = scopeExpr;
 	}
 
 	public function setExpr(e: Expr) {
@@ -96,10 +98,9 @@ class MacroManager {
 					}
 
 					if(m.targetExpr != null) {
-						final result = mac.call(m, isExtension ? {
-							expr: m.callee.expr,
-							pos: m.callee.pos
-						} : null);
+						final callee: Null<Expr> = isExtension ? m.callee.clone() : null;
+						final scope: Null<Expr> = mac.isScopable && m.scopeExpr != null ? m.scopeExpr.clone() : null;
+						final result = mac.call(m, callee, scope);
 						if(result != null) {
 							PositionFixer.expr(result);
 							m.targetExpr.expr = result.expr;
@@ -108,6 +109,14 @@ class MacroManager {
 							Context.error('Macro \'${pathToString(m.path)}\' did not generate a valid expression.', m.pos);
 						}
 					}
+				} else if(m.scopeExpr != null && m.targetExpr != null) {
+					final scopeExprClone = m.scopeExpr.clone();
+					final targetExprClone = m.targetExpr.clone();
+					final newExpr: LaxeExpr = macro {
+						final it = $targetExprClone;
+						$scopeExprClone;
+					}
+					m.targetExpr.expr = newExpr.expr;
 				} else {
 					Context.error('Macro \'${pathToString(m.path)}\' could not be found', m.pos);
 				}

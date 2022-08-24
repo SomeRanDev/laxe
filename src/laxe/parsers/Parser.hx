@@ -59,10 +59,17 @@ class Parser {
 
 	public var ended(default, null): Bool = false;
 	public var lineNumber(default, null): Int = 0;
+	public var lineIndent(default, null): String = "";
+
+	public var exprLineNumber(default, null): Int = 0;
+	public var exprLineIndent(default, null): String = "";
+
+	public var exprDepth(default, null): Int = 0;
 
 	public var allowSelf(default, null): Bool = false;
 	public var castStringsToLaxeStr(default, null): Bool = true;
 	public var useHaxeTypesForPrims(default, null): Bool = false;
+	public var allowColonExpr(default, null): Bool = true;
 
 	var nextIdentifier: String = "";
 	var nextIdentifierPos: Null<Position> = null;
@@ -72,7 +79,6 @@ class Parser {
 	var module: ModuleParser;
 
 	var lineStartIndex: Int = 0;
-	var lineIndent: String = "";
 	var lastParsedWhitespaceIndex: Int = -1;
 	var touchedContentOnThisLine: Bool = false;
 
@@ -98,6 +104,25 @@ class Parser {
 	public function getContent(): String { return content; }
 	public function getIndent(): String { return lineIndent; }
 
+	public function syncExprLineNumber() {
+		exprLineNumber = lineNumber;
+	}
+
+	public function syncExprLineIndent() {
+		exprLineIndent = lineIndent;
+	}
+
+	public function pushExprDepth() {
+		exprDepth++;
+	}
+
+	public function popExprDepth() {
+		exprDepth--;
+		if(exprDepth < 0) {
+			error("Expr depth hit -1 somehow.", noPosition());
+		}
+	}
+
 	// self
 	public function setAllowSelf(v: Bool) {
 		allowSelf = v;
@@ -111,6 +136,11 @@ class Parser {
 	// primtives to haxe types
 	public function setUseHaxeTypesForPrims(v: Bool) {
 		useHaxeTypesForPrims = v;
+	}
+
+	// allow colons
+	public function setAllowColonExpr(v: Bool) {
+		allowColonExpr = v;
 	}
 
 	// decor
@@ -633,7 +663,7 @@ class Parser {
 	}
 
 	// function params
-	public function parseNextFunctionArgs(): Null<Array<{ arg: FunctionArg, identPos: Position, typePos: Null<Position> }>> {
+	public function parseNextFunctionArgs(allowMidwayRestArg: Bool = false): Null<Array<{ arg: FunctionArg, identPos: Position, typePos: Null<Position> }>> {
 		if(findAndParseNextContent("(")) {
 			final params: Array<{ arg: FunctionArg, identPos: Position, typePos: Null<Position> }> = [];
 
@@ -689,7 +719,7 @@ class Parser {
 					if(findAndParseNextContent(")")) {
 						break;
 					} else if(findAndParseNextContent(",")) {
-						if(isRest) {
+						if(!allowMidwayRestArg && isRest) {
 							errorHere("Rest argument must be last argument for function");
 						}
 						continue;
@@ -937,13 +967,13 @@ class Parser {
 
 	// function
 	public var lastArgumentsParsed(default, null): Null<Array<{ arg: FunctionArg, identPos: Position, typePos: Null<Position> }>>;
-	public function parseFunctionAfterDef(nameRequired: Bool = false): Null<{ f: Function, k: FunctionKind, n: Null<String> }> {
+	public function parseFunctionAfterDef(nameRequired: Bool = false, isMacro: Bool = false): Null<{ f: Function, k: FunctionKind, n: Null<String> }> {
 		final name = parseNextIdent();
 
 		if(name != null || !nameRequired) {
 			final params = parseTypeParamDecls();
 			var args = {
-				lastArgumentsParsed = parseNextFunctionArgs();
+				lastArgumentsParsed = parseNextFunctionArgs(isMacro);
 				if(lastArgumentsParsed == null) {
 					[];
 				} else {

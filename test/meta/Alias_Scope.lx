@@ -1,0 +1,24 @@
+class Alias_Scope extends Test.LaxeTest:
+	override def test:
+		var value = 654
+		value:
+			assert(it == 654)
+
+		("Hello world!"):
+			assert(it == "Hello world!")
+		
+		12 + 12 / 4 * 3:
+			assert(it == 21)
+		
+		fib(10):
+			it:
+				it:
+					assert(it == 55)
+		
+def fib(n: int) -> int:
+	return if n == 0:
+		0
+	else if n == 1 || n == 2:
+		1
+	else:
+		fib(n - 1) + fib(n - 2)

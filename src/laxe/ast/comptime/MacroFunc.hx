@@ -17,6 +17,7 @@ class MacroFunc extends CompTimeFunc {
 
 	public var isStringReturn(default, null): Bool;
 	public var isExtension(default, null): Bool;
+	public var isScopable(default, null): Bool;
 
 	var func: () -> Dynamic;
 
@@ -28,6 +29,8 @@ class MacroFunc extends CompTimeFunc {
 		this.pos = pos;
 
 		checkIsExtension();
+		checkIsScopable();
+		checkRestArguments();
 		verifyReturnType(retType);
 		makeCallable();
 	}
@@ -36,23 +39,55 @@ class MacroFunc extends CompTimeFunc {
 		return "macro";
 	}
 
+	function checkIfSpecialArgument(arg: FunctionArgAndPositions, name: String): Bool {
+		return if(arg.arg.name == name) {
+			final t = arg.arg.type;
+			switch(t) {
+				case TPath({ pack: ["laxe", "stdlib"], name: "LaxeExpr" }): {
+					true;
+				}
+				case _: {
+					var pos = arg.typePos;
+					if(pos == null) pos = arg.identPos;
+					error('\'$name\' argument must be of type expr`', pos);
+					false;
+				}
+			}
+		} else {
+			false;
+		}
+	}
+
 	function checkIsExtension() {
 		if(hasArguments) {
-			final a = arguments[0];
-			if(a.arg.name == "self") {
-				final t = a.arg.type;
-				switch(t) {
-					case null | TPath({ pack: ["laxe", "stdlib"], name: "LaxeExpr" }): {
-						isExtension = true;
+			isExtension = checkIfSpecialArgument(arguments[0], "self");
+		}
+	}
+
+	function checkIsScopable() {
+		if(hasArguments) {
+			isScopable = checkIfSpecialArgument(arguments[arguments.length - 1], "scope");
+		}
+	}
+
+	// Rest-arguments are allowed to be second-to-last in macro functions
+	// if the last argument is the "scope" argument.
+	// Therefore, the check to ensure rest arguments are last is disabled
+	// during the parsing of macros, so it must be checked now.
+	function checkRestArguments() {
+		if(hasArguments) {
+			final validIndex = arguments.length - (isScopable ? 2 : 1);
+			var index = 0;
+			for(a in arguments) {
+				switch(a.arg.type) {
+					case TPath({ pack: ["haxe"], name: "Rest" }): {
+						if(index != validIndex) {
+							error("Rest argument must be last argument for function", p.mergePos(a.identPos, a.typePos));
+						}
 					}
-					case _: {
-						var pos = a.typePos;
-						if(pos == null) pos = a.identPos;
-						error("Self argument must be of type expr`", pos);
-					}
+					case _:
 				}
-			} else {
-				isExtension = false;
+				index++;
 			}
 		}
 	}
@@ -97,9 +132,24 @@ class MacroFunc extends CompTimeFunc {
 		return result;
 	}
 
+	function convertRestToArr(f: FunctionArg) {
+		return switch(f.type) {
+			case TPath({ pack: ["haxe"], name: "Rest", params: p }): {
+				{
+					meta: f.meta,
+					name: f.name,
+					type: TPath({ pack: [], name: "Array", params: p }),
+					opt: f.opt,
+					value: f.value
+				}
+			}
+			case _: f;
+		}
+	}
+
 	function makeCallable() {
 		final fun: Function = {
-			args: hasArguments ? arguments.map(argAndPos -> argAndPos.arg) : [],
+			args: hasArguments ? arguments.map(argAndPos -> convertRestToArr(argAndPos.arg)) : [],
 			ret: retType,
 			expr: expr
 		};
@@ -112,20 +162,27 @@ class MacroFunc extends CompTimeFunc {
 		func = Eval.exprToFunction(funcExpr);
 	}
 
-	public function call(mPointer: MacroPointer, callee: Null<Expr>): Null<Expr> {
+	public function call(mPointer: MacroPointer, callee: Null<Expr>, scope: Null<Expr>): Null<Expr> {
 		return if(func == null) {
 			null;
 		} else {
 			final result: Null<Dynamic> = if(hasArguments) {
-				final argInput = callee == null ? mPointer.params : [callee].concat(mPointer.params);
-				var args = convertArguments(argInput, mPointer.pos);
+				var argInput: Null<Array<Expr>> = mPointer.params;
+				if(callee != null) {
+					argInput = [callee].concat(argInput);
+				}
+
+				final args = convertArguments(argInput, mPointer.pos, arguments.length - (isScopable ? 1 : 0));
+
+				// Scope argument must be added after processing with convertArguments
+				// so it can be added after any rest arguments.
+				if(scope != null) {
+					args.push((scope : Dynamic));
+				}
+
 				Reflect.callMethod(null, func, args);
 			} else {
-				if(callee != null) {
-					Reflect.callMethod(null, func, [callee]);
-				} else {
-					func();
-				}
+				func();
 			}
 			convertDynToExpr(result);
 		}

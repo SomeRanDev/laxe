@@ -171,6 +171,13 @@ abstract LaxeExpr(Expr) from Expr to Expr {
 		}
 	}
 
+	public inline function clone(): LaxeExpr {
+		return {
+			expr: this.expr,
+			pos: this.pos
+		};
+	}
+
 	public inline function subExprs(): Array<LaxeExpr> {
 		return switch(this.expr) {
 			case EArray(e1, e2): [e1, e2];

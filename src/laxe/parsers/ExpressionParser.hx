@@ -121,8 +121,18 @@ class ExpressionParser {
 		return result;
 	}
 
-	public static function expr(p: Parser): Expr {
+	static function exprNoColon(p: Parser): Expr {
+		if(!p.allowColonExpr) return expr(p);
+		p.setAllowColonExpr(false);
+		final result = expr(p);
+		p.setAllowColonExpr(true);
+		return result;
+	}
+
+	public static function expr(p: Parser, disallowColonExpr: Bool = false): Expr {
+		p.pushExprDepth();
 		final result = maybeExpr(p);
+		p.popExprDepth();
 		if(result != null) {
 			return result;
 		}
@@ -132,6 +142,9 @@ class ExpressionParser {
 
 	public static function maybeExpr(p: Parser): Null<Expr> {
 		p.parseWhitespaceOrComments();
+
+		p.syncExprLineNumber();
+		p.syncExprLineIndent();
 
 		// ***************************************
 		// * Metadata and Decorators
@@ -193,7 +206,7 @@ class ExpressionParser {
 		// ***************************************
 		// * Template Expressions
 		// ***************************************
-		{
+		if(p.allowColonExpr) {
 			final save = p.saveParserState();
 			final macroIdent = p.tryParseIdent("template");
 			if(macroIdent != null) {
@@ -296,7 +309,7 @@ class ExpressionParser {
 		// ***************************************
 		// * Block expression
 		// ***************************************
-		{
+		if(p.allowColonExpr) {
 			final block = p.tryParseIdent("block");
 			if(block != null) {
 				return p.parseBlock();
@@ -306,11 +319,11 @@ class ExpressionParser {
 		// ***************************************
 		// * If expression
 		// ***************************************
-		{
+		if(p.allowColonExpr) {
 			final ifkey = p.tryParseIdent("if");
 			final ifIndent = p.getIndent();
 			if(ifkey != null) {
-				final cond = expr(p);
+				final cond = exprNoColon(p);
 				final block = p.parseBlock();
 
 				final elseIfExpr: Array<{ cond: Expr, e: Expr, p: Position }> = [];
@@ -327,7 +340,7 @@ class ExpressionParser {
 							p.parseWhitespaceOrComments();
 							final elseIfKey = elseKey.ident == "elif" ? elseKey : p.tryParseIdent("if");
 							if(elseIfKey != null) {
-								final eicond = expr(p);
+								final eicond = exprNoColon(p);
 								final block = p.parseBlock();
 								elseIfExpr.push({
 									cond: eicond,
@@ -371,10 +384,10 @@ class ExpressionParser {
 		// ***************************************
 		// * For expression
 		// ***************************************
-		{
+		if(p.allowColonExpr) {
 			final forKey = p.tryParseIdent("for");
 			if(forKey != null) {
-				final cond = expr(p);
+				final cond = exprNoColon(p);
 				final block = p.parseBlock();
 				return {
 					expr: EFor(cond, block),
@@ -386,7 +399,7 @@ class ExpressionParser {
 		// ***************************************
 		// * Loop expression
 		// ***************************************
-		{
+		if(p.allowColonExpr) {
 			final loopKey = p.tryParseIdent("loop");
 			if(loopKey != null) {
 				final block = p.parseBlock();
@@ -400,11 +413,11 @@ class ExpressionParser {
 		// ***************************************
 		// * While expression
 		// ***************************************
-		{
+		if(p.allowColonExpr) {
 			final runonceKey = p.tryParseIdent("runonce");
 			final whileKey = p.tryParseIdent("while");
 			if(whileKey != null) {
-				final cond = expr(p);
+				final cond = exprNoColon(p);
 				final block = p.parseBlock();
 				return {
 					expr: EWhile(cond, block, runonceKey == null),
@@ -418,11 +431,11 @@ class ExpressionParser {
 		// ***************************************
 		// * Switch expression
 		// ***************************************
-		{
+		if(p.allowColonExpr) {
 			final switchKey = p.tryParseIdent("switch");
 			final switchIndent = p.getIndent();
 			if(switchKey != null) {
-				final cond = expr(p);
+				final cond = exprNoColon(p);
 				var caseIndent = null;
 
 				final cases = [];
@@ -449,10 +462,10 @@ class ExpressionParser {
 								// So when parsing cases, we do not cast raw strings to laxe-strings.
 								p.setCastStringsToLaxe(false);
 
-								final values = [expr(p)];
+								final values = [exprNoColon(p)];
 								while(true) {
 									if(p.findAndParseNextContent("|")) {
-										values.push(expr(p));
+										values.push(exprNoColon(p));
 									} else {
 										break;
 									}
@@ -461,7 +474,7 @@ class ExpressionParser {
 								p.setCastStringsToLaxe(true);
 
 								final guard = if(p.tryParseIdent("if") != null) {
-									expr(p);
+									exprNoColon(p);
 								} else {
 									null;
 								}
@@ -493,7 +506,7 @@ class ExpressionParser {
 		// ***************************************
 		// * Try expression
 		// ***************************************
-		{
+		if(p.allowColonExpr) {
 			final tryKey = p.tryParseIdent("try");
 			final tryIdent = p.getIndent();
 			if(tryKey != null) {
@@ -665,7 +678,39 @@ class ExpressionParser {
 	}
 	
 	static function post_expr(p: Parser, e: Expr): Expr {
+		final lastIndex = p.index;
+		
 		p.parseWhitespaceOrComments();
+
+		// Observe the following:
+		//
+		// block:
+		//    something
+		// (1 + 2)
+		//
+		// This could be parsed as:
+		//
+		// block:
+		//    something(1 + 2)
+		//
+		// if not careful. To avoid this, certain "post" expr
+		// features are disallowed (such as call operator and suffix operators)
+		// unless it's the same line OR there is additional identation.
+		//
+		// block:
+		//    something
+		//        (1 + 2) # this becomes something(1 + 2)
+		//
+		// block:
+		//    something
+		// (1 + 2) # this remains separate (1 + 2) stateament
+		//
+		final allowAmbiguous =
+			p.exprLineNumber == p.lineNumber ||
+			(p.lineIndent.length > p.exprLineIndent.length &&
+			StringTools.startsWith(p.lineIndent, p.exprLineIndent));
+
+		final noSpaceFromExpr = lastIndex == p.index;
 
 		final startIndex = p.getIndex();
 
@@ -701,7 +746,7 @@ class ExpressionParser {
 		// ***************************************
 		// * OpInterval
 		// ***************************************
-		{
+		if(noSpaceFromExpr) {
 			if(p.findAndParseNextContent("...")) {
 				final nextExpr = expr(p);
 				return addInfixToExpr(IntervalOperator, p.makePosition(startIndex), e, nextExpr, p);
@@ -744,19 +789,21 @@ class ExpressionParser {
 		// ***************************************
 		// * Suffix Operators
 		// ***************************************
-		final suffix = checkForOperators(p, SuffixOperators);
-		if(suffix != null) {
-			p.incrementIndex(suffix.op.length);
-			return post_expr(p, {
-				expr: EUnop(stringToUnop(suffix.op), true, e),
-				pos: p.makePosition(startIndex)
-			});
+		if(allowAmbiguous) {
+			final suffix = checkForOperators(p, SuffixOperators);
+			if(suffix != null) {
+				p.incrementIndex(suffix.op.length);
+				return post_expr(p, {
+					expr: EUnop(stringToUnop(suffix.op), true, e),
+					pos: p.makePosition(startIndex)
+				});
+			}
 		}
 
 		// ***************************************
 		// * Call Operator
 		// ***************************************
-		if(p.parseNextContent("(")) {
+		if(allowAmbiguous && p.parseNextContent("(")) {
 			final exprs = p.parseNextExpressionList(")");
 			final pos = p.makePosition(startIndex);
 
@@ -782,7 +829,7 @@ class ExpressionParser {
 		// ***************************************
 		// * Array Access Operator
 		// ***************************************
-		if(p.parseNextContent("[")) {
+		if(allowAmbiguous && p.parseNextContent("[")) {
 			final exprs = p.parseNextExpressionList("]");
 			final pos = p.makePosition(startIndex);
 
@@ -802,7 +849,7 @@ class ExpressionParser {
 		}
 
 		// ***************************************
-		// * as, castas, is Operators
+		// * the, as, is Operators
 		// ***************************************
 		{
 			final ident = p.tryParseOneIdent("the", "as", "is");
@@ -838,77 +885,105 @@ class ExpressionParser {
 		if(infix != null) {
 			p.incrementIndex(infix.op.length);
 			final nextExpr = expr(p);
-			return addInfixToExpr(infix, p.makePosition(startIndex), e, nextExpr, p);
+			return post_expr(p, addInfixToExpr(infix, p.makePosition(startIndex), e, nextExpr, p));
 		}
 
 		// ***************************************
 		// * Macro Call Operator
 		// ***************************************
-		if(p.parseNextContent("!")) {
-			final exprs = if(p.parseNextContent("(")) {
-				p.parseNextExpressionList(")");
+		if(allowAmbiguous && noSpaceFromExpr) {
+			final isScopeInput = p.exprDepth <= 1 ? p.checkAhead(":") : false;
+			final scopeExpr = if(isScopeInput) {
+				p.parseBlock();
 			} else {
-				[];
+				null;
 			}
-			final pos = p.makePosition(startIndex);
+			if(isScopeInput || p.parseNextContent("!")) {
+				var macroIdentExpr = e;
 
-			var calleeExpr: Null<Expr> = null;
-			var macroName: Null<StringAndPos> = null;
-			var assumeExtension = false;
-			function getPath(e: Expr, list: Array<StringAndPos>) {
-				return switch(e.expr) {
-					case EConst(CIdent(c)): {
-						final pathStrAndPos = { ident: c, pos: e.pos };
-						if(macroName == null) {
-							macroName = pathStrAndPos;
+				final exprs = if(isScopeInput) {
+					switch(e.expr) {
+						case ECall(callExpr, callParams): {
+							macroIdentExpr = callExpr;
+							callParams;
 						}
-						list.push(pathStrAndPos);
-						list;
+						case _: [];
 					}
-					case EField(e2, field): {
-						final pathStrAndPos = { ident: field, pos: e.pos };
-						if(macroName == null) {
-							macroName = pathStrAndPos;
-							calleeExpr = e2;
+				} else if(p.parseNextContent("(")) {
+					p.parseNextExpressionList(")");
+				} else {
+					[];
+				}
+				final pos = p.makePosition(startIndex);
+
+				var calleeExpr: Null<Expr> = null;
+				var macroName: Null<StringAndPos> = null;
+				var assumeExtension = false;
+				function getPath(e: Expr, list: Array<StringAndPos>) {
+					return switch(e.expr) {
+						case EConst(CIdent(c)): {
+							final pathStrAndPos = { ident: c, pos: e.pos };
+							if(macroName == null) {
+								macroName = pathStrAndPos;
+							}
+							list.push(pathStrAndPos);
+							list;
 						}
-						getPath(e2, list);
-						list.push(pathStrAndPos);
-						list;
-					}
-					case _: {
-						//p.error("Invalid macro call on this expression", e.pos);
-						if(calleeExpr == null) {
-							calleeExpr = e;
+						case EField(e2, field): {
+							final pathStrAndPos = { ident: field, pos: e.pos };
+							if(macroName == null) {
+								macroName = pathStrAndPos;
+								calleeExpr = e2;
+							}
+							getPath(e2, list);
+							list.push(pathStrAndPos);
+							list;
 						}
-						assumeExtension = true;
-						list;
+						case _: {
+							if(calleeExpr == null) {
+								calleeExpr = e;
+							}
+							assumeExtension = true;
+							list;
+						}
 					}
 				}
+
+				// There are two types of macro calls.
+				// Alone, or extensions.
+				// i.e. myMacro!()  vs.  (1 + 2).myMacro!()
+				// If the entire expression is just CIdent + EFields, we will assume it's a direct macro call.
+				// Otherwise, we assume it's an extension call.
+
+				var pathMembers = getPath(macroIdentExpr, []);
+
+				var resultExpr = if(isScopeInput && macroName == null) {
+					pathMembers = [];
+					e;
+				} else if(assumeExtension) {
+					pathMembers = [macroName];
+					calleeExpr;
+				} else {
+					e;
+				}
+
+				if(isScopeInput) {
+					resultExpr = e;
+				}
+
+				final mp = new MacroPointer(
+					TypeParser.convertIdentListToTypePath(p, pathMembers),
+					pos,
+					exprs,
+					calleeExpr,
+					assumeExtension,
+					isScopeInput ? scopeExpr : null
+				);
+				mp.setExpr(resultExpr);
+				p.addExprMacroPointer(mp);
+
+				return post_expr(p, resultExpr);
 			}
-
-			// There are two types of macro calls.
-			// Alone, or extensions.
-			// i.e. myMacro!()  vs.  (1 + 2).myMacro!()
-			// If the entire expression is just CIdent + EFields, we will assume it's a direct macro call.
-			// Otherwise, we assume it's an extension call.
-
-			var pathMembers = getPath(e, []);
-
-			final resultExpr = if(assumeExtension) {
-				pathMembers = [macroName];
-				calleeExpr;
-			} else {
-				{
-					expr: EConst(CIdent("null")),
-					pos: pos
-				};
-			}
-
-			final mp = new MacroPointer(TypeParser.convertIdentListToTypePath(p, pathMembers), pos, exprs, calleeExpr, assumeExtension);
-			mp.setExpr(resultExpr);
-			p.addExprMacroPointer(mp);
-
-			return post_expr(p, resultExpr);
 		}
 
 		// ***************************************
