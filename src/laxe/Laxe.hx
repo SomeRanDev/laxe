@@ -12,6 +12,8 @@ import haxe.io.Path;
 
 var ClassPaths = [];
 var Modules: Array<ModuleParser> = [];
+var ModuleMap: Map<String, ModuleParser> = [];
+var UseHaxeClassPaths = true;
 
 final LaxePathExtension = "lx";
 
@@ -21,19 +23,32 @@ function AddClassPath(p: String) {
 }
 
 @:nullSafety(Strict)
+function DisallowHaxeClassPaths() {
+	UseHaxeClassPaths = false;
+}
+
+@:nullSafety(Strict)
 function GetClassPaths() {
-	final p = Context.definedValue("laxe-cp");
-	if(p != null) {
-		return [p].concat(ClassPaths);
+	final result = if(UseHaxeClassPaths) {
+		Context.getClassPath().concat(ClassPaths);
+	} else {
+		ClassPaths;
 	}
-	return ClassPaths;
+	final p = Context.definedValue("laxe-cp");
+	if(p != null && p.length > 0) {
+		return [p].concat(result);
+	}
+	return result;
 }
 
 @:nullSafety(Strict)
 function Start() {
 	final paths = GetClassPaths();
 	for(p in paths) {
-		LoadFiles(FileSystem.readDirectory(p), p);
+		final path = p.length > 0 ? p : "./";
+		if(FileSystem.exists(path)) {
+			LoadFiles(FileSystem.readDirectory(path), p);
+		}
 	}
 	Compile();
 }
@@ -53,8 +68,11 @@ function LoadFiles(files: Array<String>, directoryString: String) {
 
 @:nullSafety(Strict)
 function LoadFile(f: String, p: Path) {
-	final m = new ModuleParser(f, p);
-	Modules.push(m);
+	if(!ModuleMap.exists(f)) {
+		final m = new ModuleParser(f, p);
+		Modules.push(m);
+		ModuleMap.set(f, m);
+	}
 }
 
 @:nullSafety(Strict)

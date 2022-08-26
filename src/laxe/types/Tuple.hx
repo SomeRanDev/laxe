@@ -61,6 +61,8 @@ class Tuple {
 		final name = getNamedTupleName(names, types);
 		final key = names.join("|");
 		if(!namedTuplesCreated.exists(key)) {
+			namedTuplesCreated.set(key, name);
+
 			final complexType = TPath(generateTypePath(size, types.map(t -> TPType(t))));
 
 			final fields = [];

@@ -1,0 +1,22 @@
+# Use type-safe expression object
+macro forLoop(start: expr`, check: expr`, increment: expr`, scope: expr`) -> expr`:
+	return template expr:
+		$start
+		while $check:
+			$scope
+			$increment
+
+# Or construct expression using string
+macro print(msg: str, ...args: expr`) -> str:
+	var index = 1
+	for e in args:
+		msg = msg.replace("%" + index, "' + (" + e.toString() + ") + '")
+		index++
+	return "('" + msg + "')"
+	#return "trace('" + msg + "')"
+
+class Intro1 extends Test.LaxeTest:
+	override def test:
+		forLoop(var i = 0, i < 10, i++):
+			if i % 2 == 0:
+				assert(print!("%1 is an even number.", i) == (i + " is an even number."))

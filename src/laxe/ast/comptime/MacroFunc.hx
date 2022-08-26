@@ -192,7 +192,7 @@ class MacroFunc extends CompTimeFunc {
 		return if(Std.isOfType(d, Array)) {
 			var pos = null;
 			if(pos == null) {
-				pos = DecorManager.ProcessingPosition;
+				pos = MacroManager.ProcessingPosition;
 			}
 			if(pos == null) {
 				pos = Context.currentPos();
@@ -207,7 +207,7 @@ class MacroFunc extends CompTimeFunc {
 				}
 			}
 		} else if(Std.isOfType(d, String)) {
-			laxe.stdlib.LaxeExpr.fromString(d);
+			laxe.stdlib.LaxeExpr.fromString(d, MacroManager.ProcessingPosition);
 		} else {
 			d;
 		}

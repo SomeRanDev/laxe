@@ -14,7 +14,7 @@ class Alias_Scope extends Test.LaxeTest:
 			it:
 				it:
 					assert(it == 55)
-		
+
 def fib(n: int) -> int:
 	return if n == 0:
 		0

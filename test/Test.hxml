@@ -1,11 +1,7 @@
 -cp ../src/
 -cp .
 
--D laxe-cp=.
-
 -main Test
 
 --macro nullSafety("laxe", Strict)
 --macro laxe.Laxe.Start()
-
--js Test.js
