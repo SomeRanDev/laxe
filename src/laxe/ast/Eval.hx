@@ -51,6 +51,21 @@ function convertSpecialCalls(e: Expr) {
 				pos: e.pos
 			}
 		}
+
+		#if laxe.meta.UseEvalMath
+		case ECall({
+			expr: EField({ expr: EConst(CIdent("Math")) }, fieldName),
+			pos: p
+		}, params) if(EvalMath.names.contains(fieldName)): {
+			final p = e.pos;
+			final ident = macro @:pos(p) laxe.ast.Eval.EvalMath.$fieldName;
+			return {
+				expr: ECall(ident, params),
+				pos: e.pos
+			}
+		}
+		#end
+
 		case ECall({
 			expr: EField({
 				expr: EField(e, "Context"),
@@ -153,3 +168,39 @@ inline function sanitizePositions(e: { expr: haxe.macro.Expr.ExprDef, pos: Dynam
 	return e;
 	#end
 }
+
+#if laxe.meta.UseEvalMath
+@:nullSafety(Strict)
+@:exclude
+class EvalMath {
+	public static var names = [
+		"abs", "acos", "asin", "atan", "atan2", "ceil",
+		"cos", "exp", "fceil", "ffloor", "floor", "fround",
+		"isFinite", "isNaN", "log", "max", "min", "pow", "random",
+		"round", "sin", "sqrt", "tan"
+	];
+	public static function abs(v) return Math.abs(v);
+	public static function acos(v) return Math.acos(v);
+	public static function asin(v) return Math.asin(v);
+	public static function atan(v) return Math.atan(v);
+	public static function atan2(y,x) return Math.atan2(y,x);
+	public static function ceil(v) return Math.ceil(v);
+	public static function cos(v) return Math.cos(v);
+	public static function exp(v) return Math.exp(v);
+	public static function fceil(v) return Math.fceil(v);
+	public static function ffloor(v) return Math.ffloor(v);
+	public static function floor(v) return Math.floor(v);
+	public static function fround(v) return Math.fround(v);
+	public static function isFinite(v) return Math.isFinite(v);
+	public static function isNaN(v) return Math.isNaN(v);
+	public static function log(v) return Math.log(v);
+	public static function max(a,b) return Math.max(a,b);
+	public static function min(a,b) return Math.min(a,b);
+	public static function pow(v,u) return Math.pow(v,u);
+	public static function random() return Math.random();
+	public static function round(v) return Math.round(v);
+	public static function sin(v) return Math.sin(v);
+	public static function sqrt(v) return Math.sqrt(v);
+	public static function tan(v) return Math.tan(v);
+}
+#end

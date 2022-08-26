@@ -4,4 +4,13 @@
 -main Test
 
 --macro nullSafety("laxe", Strict)
+
+--macro laxe.Laxe.DisallowHaxeClassPaths()
+--macro laxe.Laxe.AddClassPath("basic")
+--macro laxe.Laxe.AddClassPath("laxe_std")
+--macro laxe.Laxe.AddClassPath("meta")
+--macro laxe.Laxe.AddClassPath("doc_samples")
+
 --macro laxe.Laxe.Start()
+
+-D laxe.meta.UseEvalMath

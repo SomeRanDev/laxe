@@ -1,2 +1,9 @@
-test/Test.js
+test/bin_cpp
+test/bin_cs
+
 test/Test.hl
+test/Test.js
+test/Test.py
+test/Test.lua
+
+test/haxe
