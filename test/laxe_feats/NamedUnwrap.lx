@@ -1,0 +1,26 @@
+class NamedUnwrap extends Test.LaxeTest:
+	override def test:
+		const { num, string } = getTup()
+		assert(num == 77)
+		assert(string == "Greetings")
+
+		const { text } = getStruct()
+		assert(text == "ABC")
+
+		var { ducks, parkName } = new DuckCounter(5, "Cool Park")
+		assert(ducks == 5)
+		assert(parkName == "Cool Park")
+
+def getTup -> (num: int, string: str):
+	return (77, "Greetings")
+
+def getStruct -> { text: str }:
+	return { text: "ABC" }
+
+class DuckCounter:
+	var ducks: int
+	var parkName: str
+
+	def new(ducks: int, parkName: str):
+		self.ducks = ducks
+		self.parkName = parkName

@@ -274,13 +274,59 @@ class ExpressionParser {
 		{
 			final varIdent = p.tryParseOneIdent("var", "const");
 			if(varIdent != null) {
-				final varName = p.parseNextIdent();
-				if(varName != null) {
-					final type = if(p.findAndParseNextContent(":")) {
-						p.parseNextType();
+				var positionUnwrap = false;
+				if(p.findAndParseNextContent("(")) {
+					positionUnwrap = true;
+				}
+
+				var namedUnwrap = false;
+				if(p.findAndParseNextContent("{")) {
+					namedUnwrap = true;
+				}
+
+				final varNames = [];
+				final varTypes = [];
+
+				while(true) {
+					final varName = p.parseNextIdent();
+					if(StringTools.startsWith(varName.ident, "__unwrap")) {
+						p.error("Identifiers that start with '__unwrap' are reserved", varName.pos);
+					} else if(varName != null) {
+						final type = if(p.findAndParseNextContent(":")) {
+							p.parseNextType();
+						} else {
+							null;
+						}
+
+						varNames.push(varName);
+						varTypes.push(type);
 					} else {
-						null;
+						p.error("Expected variable name", p.herePosition());
 					}
+
+					if(p.findAndParseNextContent(",")) {
+						continue;
+					} else {
+						break;
+					}
+				}
+
+				if(positionUnwrap) {
+					if(!p.findAndParseNextContent(")")) {
+						p.errorHere("')' expected");
+					}
+				}
+				if(namedUnwrap) {
+					if(!p.findAndParseNextContent("}")) {
+						p.errorHere("'}' expected");
+					}
+				}
+
+				if(!positionUnwrap && !namedUnwrap && varNames.length > 1) {
+					positionUnwrap = true;
+				}
+
+				{
 
 					final e = if(p.findAndParseNextContent("=")) {
 						expr(p);
@@ -289,19 +335,59 @@ class ExpressionParser {
 					}
 
 					final pos = p.makePosition(startIndex);
-					return {
-						expr: EVars([
+
+					if(e == null && (positionUnwrap || namedUnwrap)) {
+						p.error("Variable unwrap must have assignment", pos);
+					}
+
+					return if(varNames.length == 0) {
+						p.error("Missing variable name", pos);
+						macro null;
+					} else if(!positionUnwrap && !namedUnwrap) {
+						{
+							expr: EVars([
+								{
+									type: varTypes[0],
+									name: varNames[0].ident,
+									expr: e,
+									isFinal: varIdent.ident == "const"
+								}
+							]),
+							pos: pos
+						};
+					} else {
+						final valueHolder = "__unwrap" + p.getUnwrapId();
+
+						final vars = [
 							{
-								type: type,
-								name: varName.ident,
+								type: null,
+								name: valueHolder,
 								expr: e,
-								isFinal: varIdent.ident == "const"
+								isFinal: true
 							}
-						]),
-						pos: pos
-					};
-				} else {
-					p.error("Expected variable name", p.herePosition());
+						];
+
+						var index = 0;
+						for(name in varNames) {
+							final i = index++;
+							final n = name.ident;
+							if(positionUnwrap && n == "_") {
+								continue;
+							}
+							final compName = "component" + i;
+							vars.push({
+								type: varTypes[i],
+								name: n,
+								expr: namedUnwrap ? macro $i{valueHolder}.$n : macro $i{valueHolder}.$compName(),
+								isFinal: varIdent.ident == "const"
+							});
+						}
+
+						{
+							expr: EVars(vars),
+							pos: pos
+						};
+					}
 				}
 			}
 		}

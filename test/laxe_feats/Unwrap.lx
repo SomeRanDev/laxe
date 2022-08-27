@@ -1,0 +1,26 @@
+class Unwrap extends Test.LaxeTest:
+	override def test:
+		const num, string = getTup()
+		assert(num == 43)
+		assert(string == "From Tuple")
+
+		var cls = new CustomClass(22)
+		var first, _, third = cls
+		assert(first == 22)
+		assert(third == 66)
+
+		var (_, second) = cls
+		assert(second == 44)
+
+def getTup -> (int, str):
+	return (43, "From Tuple")
+
+class CustomClass:
+	var aValue = 0
+
+	def new(v: int):
+		aValue = v
+	
+	def component0 = aValue
+	def component1 = aValue * 2
+	def component2 = aValue * 3

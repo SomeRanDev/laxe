@@ -86,6 +86,8 @@ class Parser {
 
 	var forcedPos: Null<Position> = null;
 
+	var unwrapVarId: Int = 0;
+
 	// constructor
 	public function new(content: String, filePath: String, module: Null<ModuleParser> = null) {
 		this.content = content;
@@ -148,6 +150,11 @@ class Parser {
 		if(module != null) {
 			module.addExprDecorPointer(d);
 		}
+	}
+
+	// unwrap
+	public function getUnwrapId(): Int {
+		return unwrapVarId++;
 	}
 
 	// macro
@@ -674,6 +681,9 @@ class Parser {
 					final ident = parseNextIdent();
 					if(ident == null) {
 						errorHere("Expected identifier");
+						break;
+					} else if(StringTools.startsWith(ident.ident, "__unwrap")) {
+						error("Identifiers that start with '__unwrap' are reserved", ident.pos);
 						break;
 					}
 

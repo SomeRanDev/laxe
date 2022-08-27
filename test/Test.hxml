@@ -7,6 +7,7 @@
 
 --macro laxe.Laxe.DisallowHaxeClassPaths()
 --macro laxe.Laxe.AddClassPath("basic")
+--macro laxe.Laxe.AddClassPath("laxe_feats")
 --macro laxe.Laxe.AddClassPath("laxe_std")
 --macro laxe.Laxe.AddClassPath("meta")
 --macro laxe.Laxe.AddClassPath("doc_samples")
