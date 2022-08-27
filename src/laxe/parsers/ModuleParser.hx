@@ -25,6 +25,9 @@ enum LaxeModuleMember {
 	Class(name: String, pos: Position, meta: Array<MetadataEntry>, params: Null<Array<TypeParamDecl>>, kind: TypeDefKind, fields: Array<Field>);
 	TypeAlias(name: String, pos: Position, meta: Array<MetadataEntry>, params: Null<Array<TypeParamDecl>>, alias: ComplexType);
 	Enum(name: String, pos: Position, meta: Array<MetadataEntry>, params: Null<Array<TypeParamDecl>>, enumFields: Array<Field>, abstractFields: Array<Field>);
+	Modify(path: TypePath, pos: Position, meta: Array<MetadataEntry>, fields: Array<Field>, actions: Array<LaxeModuleMember>);
+	Rename(from: String, to: String, pos: Position);
+	Delete(ident: String, pos: Position);
 }
 
 @:nullSafety(Strict)
@@ -33,6 +36,7 @@ class ModuleParser {
 	var modulePath: String;
 
 	var types: Array<TypeDefinition>;
+	var modifies: Array<{ typeDef: TypeDefinition, actions: Array<LaxeModuleMember> }>;
 	var imports: Null<Array<ImportExpr>>;
 	var usings: Null<Array<TypePath>>;
 
@@ -59,6 +63,7 @@ class ModuleParser {
 		LaxeModuleMap[modulePath] = this;
 
 		types = [];
+		modifies = [];
 		imports = null;
 		usings = null;
 
@@ -159,6 +164,14 @@ class ModuleParser {
 
 			{
 				final member = parseTypeAlias();
+				if(member != null) {
+					members.push({ member: member, metadata: metadata });
+					continue;
+				}
+			}
+
+			{
+				final member = parseModify();
 				if(member != null) {
 					members.push({ member: member, metadata: metadata });
 					continue;
@@ -355,6 +368,7 @@ class ModuleParser {
 
 	function addMemberToTypes(member: LaxeModuleMember, metadata: Parser.Metadata) {
 		var typeDef: Null<TypeDefinition> = null;
+		var addTypeDef = true;
 		switch(member) {
 			case Pass(_): {
 				return;
@@ -440,6 +454,27 @@ class ModuleParser {
 					};
 				}
 			}
+			case Modify(path, pos, meta, fields, actions): {
+				addTypeDef = false;
+
+				typeDef = {
+					pos: pos,
+					pack: path.pack.concat([path.name]),
+					name: path.sub != null ? path.sub : path.name,
+					meta: metadata.string != null ? meta.concat(metadata.string) : meta,
+					params: [],
+					kind: TDClass(),
+					fields: fields
+				};
+
+				modifies.push({ typeDef: typeDef, actions: actions });
+			}
+			case Rename(_, _, pos): {
+				p.error("Rename statement not allowed at top level", pos);
+			}
+			case Delete(_, pos): {
+				p.error("Delete statement not allowed at top level", pos);
+			}
 		}
 		if(typeDef != null) {
 			if(metadata.typed != null) {
@@ -448,7 +483,9 @@ class ModuleParser {
 					decorManager.addPointer(d);
 				}
 			}
-			types.push(typeDef);
+			if(addTypeDef) {
+				types.push(typeDef);
+			}
 		}
 	}
 
@@ -459,7 +496,10 @@ class ModuleParser {
 				Function(_, pos, _, _, _) |
 				Class(_, pos, _, _, _) |
 				TypeAlias(_, pos, _, _, _) |
-				Enum(_, pos, _, _, _, _): pos;
+				Enum(_, pos, _, _, _, _) |
+				Modify(_, pos, _, _, _) |
+				Rename(_, _, pos) |
+				Delete(_, pos): pos;
 		}
 	}
 
@@ -484,10 +524,8 @@ class ModuleParser {
 	// * Parsing
 	// ========================================
 
-	function parseClassFields(startIndent: String, classTypeName: String = "class"): Array<Field> {
+	function parseClassFields(startIndent: String, classTypeName: String = "class", extraMembers: Null<Array<LaxeModuleMember>> = null): Array<Field> {
 		final fields = [];
-
-		final isClass = classTypeName == "class";
 
 		p.setAllowSelf(true);
 
@@ -510,11 +548,22 @@ class ModuleParser {
 			if(classIndent != null) {
 				while(classIndent == p.getIndent()) {
 					final metadata = p.parseAllNextDecors();
+
 					final mem = parseFunctionOrVariable(true);
 					if(mem != null) {
 						switch(mem) {
 							case Pass(_): {
 								continue;
+							}
+							case Rename(_, _, pos) | Delete(_, pos): {
+								if(classTypeName == "modify") {
+									if(extraMembers != null) {
+										extraMembers.push(mem);
+									}
+								} else {
+									final isRename = switch(mem) { case Rename(_,_,_): true; case _: false; }
+									p.error((isRename ? "Rename" : "Delete") + " cannot be used outside of modify", pos);
+								}
 							}
 							case _: {
 								final field = convertModuleMemberToField(mem, metadata);
@@ -634,37 +683,88 @@ class ModuleParser {
 		return field;
 	}
 
-	function parseFunctionOrVariable(allowPass: Bool = false): Null<LaxeModuleMember> {
+	function errorCustomAccessors(fields: Array<Field>, typeDefName: String) {
+		for(f in fields) {
+			if(f.meta != null) {
+				for(i in 0...f.meta.length) {
+					if(StringTools.startsWith(f.meta[i].name, "#acc_")) {
+						p.error(f.meta[i].name.substring(5) + " is not allowed on " + typeDefName, f.meta[i].pos);
+					}
+				}
+			}
+		}
+	}
+
+	function parseFunctionOrVariable(allowClassContent: Bool = false): Null<LaxeModuleMember> {
 		final state = p.saveParserState();
 		final startIndex = p.getIndex();
 		final access = p.parseAllAccessWithPublic();
+		final accessExists = access.access.length > 1 || access.other.length > 0;
 
 		final ident = p.parseNextIdent();
 		if(ident != null) {
 			final name = ident.ident;
-			if(allowPass && name == "pass") {
-				if(access.length > 1) {
+			if(allowClassContent && name == "pass") {
+				if(accessExists) {
 					p.error("Pass cannot have access modifiers", p.makePosition(startIndex));
 				}
-				p.parseWhitespaceOrComments();
 				return Pass(ident.pos);
+			} else if(allowClassContent && (name == "rename" || name == "delete")) {
+				if(accessExists) {
+					p.error("Pass cannot have access modifiers", p.makePosition(startIndex));
+				}
+				return name == "rename" ? parseRename() : parseDelete();
 			} else if(name == "def") {
-				return parseFunctionAfterDef(startIndex, access);
+				return parseFunctionAfterDef(startIndex, access.access, access.other);
 			} else if(name == "var" || name == "const") {
-				return parseVariableAfterVar(ident, startIndex, access);
+				return parseVariableAfterVar(ident, startIndex, access.access, access.other);
 			}
 		}
 		p.restoreParserState(state);
 		return null;
 	}
 
-	function parseFunctionAfterDef(startIndex: Int, access: Array<Access>): Null<LaxeModuleMember> {
-		final fun = p.parseFunctionAfterDef(true);
-		final ffun = FFun(fun.f);
-		return Function(fun.n, p.makePosition(startIndex), [], ffun, access);
+	function parseRename(): Null<LaxeModuleMember> {
+		final startIndex = p.getIndex();
+		final from = p.parseNextIdent();
+		if(from == null) {
+			p.errorHere("Expected identifier of member to be renamed");
+			return null;
+		}
+
+		final toIdent = p.tryParseIdent("to");
+		if(toIdent == null) {
+			p.errorHere("Expected 'to'");
+			return null;
+		}
+
+		final to = p.parseNextIdent();
+		if(to == null) {
+			p.errorHere("Expected identifier to be renamed to");
+			return null;
+		}
+
+		if(from.ident == to.ident) {
+			p.error("Cannot rename to the same identifier", p.makePosition(startIndex));
+		}
+
+		return Rename(from.ident, to.ident, p.makePosition(startIndex));
 	}
 
-	function parseVariableAfterVar(varIdent: Parser.StringAndPos, startIndex: Int, access: Array<Access>): Null<LaxeModuleMember> {
+	function parseDelete(): Null<LaxeModuleMember> {
+		final startIndex = p.getIndex();
+		final ident = p.parseNextIdent();
+		return Delete(ident.ident, ident.pos);
+	}
+
+	function parseFunctionAfterDef(startIndex: Int, access: Array<Access>, otherAccess: Array<StringAndPos>): Null<LaxeModuleMember> {
+		final fun = p.parseFunctionAfterDef(true);
+		final ffun = FFun(fun.f);
+		final metadata = otherAccess.map(o -> { name: "#acc_" + o.ident, params: null, pos: o.pos });
+		return Function(fun.n, p.makePosition(startIndex), metadata, ffun, access);
+	}
+
+	function parseVariableAfterVar(varIdent: Parser.StringAndPos, startIndex: Int, access: Array<Access>, otherAccess: Array<StringAndPos>): Null<LaxeModuleMember> {
 		final name = p.parseNextIdent();
 		if(name != null) {
 			final type = if(p.findAndParseNextContent(":")) {
@@ -685,6 +785,10 @@ class ModuleParser {
 				[ { name: ":final", pos: varIdent.pos } ];
 			} else {
 				null;
+			}
+
+			for(other in otherAccess) {
+				meta.push({ name: "#acc_" + other.ident, pos: other.pos });
 			}
 
 			return Variable(name.ident, p.makePosition(startIndex), meta, FVar(type, e), access);
@@ -733,6 +837,8 @@ class ModuleParser {
 
 				final fields = parseClassFields(startIndent);
 
+				errorCustomAccessors(fields, "class");
+
 				final meta = if(classIdent.ident == "struct") {
 					[ { name: ":struct", pos: classIdent.pos } ];
 				} else {
@@ -762,6 +868,8 @@ class ModuleParser {
 			if(name != null) {
 				final params = p.parseTypeParamDecls();
 				final fields = parseClassFields(startIndent, "enum");
+
+				errorCustomAccessors(fields, "enum");
 
 				final enumFields = [];
 				final abstractFields = [];
@@ -909,6 +1017,8 @@ class ModuleParser {
 
 				final fields = parseClassFields(startIndent);
 
+				errorCustomAccessors(fields, "wrapper");
+
 				final meta = [];
 
 				final tdAbstract = TDAbstract(superType, from, to);
@@ -953,6 +1063,29 @@ class ModuleParser {
 				}
 			} else {
 				p.errorHere("Expected 'type' or 'decor' keyword here");
+			}
+		} else {
+			p.restoreParserState(state);
+		}
+
+		return null;
+	}
+
+	function parseModify(): Null<LaxeModuleMember> {
+		final state = p.saveParserState();
+
+		final startIndex = p.getIndex();
+		final startIndent = p.getIndent();
+
+		final modifyIdent = p.tryParseIdent("modify");
+		if(modifyIdent != null) {
+			final path = p.parseNextTypePath();
+			if(path != null) {
+				final actions = [];
+				final fields = parseClassFields(startIndent, "modify", actions);
+				return Modify(path, p.makePosition(startIndex), [], fields, actions);
+			} else {
+				p.errorHere("Expected class path");
 			}
 		} else {
 			p.restoreParserState(state);
@@ -1010,6 +1143,92 @@ class ModuleParser {
 		}
 
 		return false;
+	}
+
+	public function applyModifies(modules: Array<ModuleParser>) {
+		for(modify in modifies) {
+			var found = false;
+			final modifyPath = modify.typeDef.pack.join(".");
+			for(m in modules) {
+				if(m.modulePath == modifyPath) {
+					m.addModify(modify.typeDef, modify.actions);
+					found = true;
+					break;
+				}
+			}
+			if(!found) {
+				p.error("Modify could not find provided type", modify.typeDef.pos);
+			}
+		}
+	}
+
+	function addModify(modify: TypeDefinition, actions: Array<LaxeModuleMember>) {
+		for(type in types) {
+			if(type.name == modify.name) {
+				for(action in actions) {
+					applyAction(action, type.fields);
+				}
+				for(f in modify.fields) {
+					var replace = false;
+					var replacePos = null;
+					if(f.meta != null) {
+						for(meta in f.meta) {
+							if(meta.name == "#acc_replace") {
+								replace = true;
+								replacePos = meta.pos;
+							} else if(StringTools.startsWith(meta.name, "#acc_")) {
+								p.error(meta.name.substring(5) + " is not a valid accessor for modify", meta.pos);
+							}
+						}
+					}
+
+					var found = false;
+					if(replace) {
+						for(existingField in type.fields) {
+							if(existingField.name == f.name) {
+								type.fields.remove(existingField);
+								found = true;
+								break;
+							}
+						}
+						if(!found) {
+							p.error("Could not find existing field with name '" + f.name + "'", replacePos);
+						}
+					}
+
+					type.fields.push(f);
+				}
+			}
+		}
+	}
+
+	function applyAction(action: LaxeModuleMember, fields: Array<Field>) {
+		switch(action) {
+			case Rename(from, to, pos): {
+				var field: Null<Field> = null;
+				for(f in fields) {
+					if(f.name == from) {
+						field = f;
+						break;
+					}
+				}
+				if(field != null) {
+					field.name = to;
+				} else {
+					p.error("Field of this name does not exist", pos);
+				}
+			}
+			case Delete(name, pos): {
+				for(f in fields) {
+					if(f.name == name) {
+						fields.remove(f);
+						return;
+					}
+				}
+				p.error("Field of this name does not exist", pos);
+			}
+			case _: {}
+		}
 	}
 }
 

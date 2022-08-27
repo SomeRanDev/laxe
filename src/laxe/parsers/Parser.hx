@@ -541,14 +541,21 @@ class Parser {
 
 	public function tryParseMultiIdentOneEach(...idents: String): Array<StringAndPos> {
 		final result = [];
-		for(ident in idents) {
-			final ident = tryParseIdent(ident);
-			if(ident != null) {
-				if(result.contains(ident)) {
-					error("Unexpected identifier", ident.pos);
-				} else {
-					result.push(ident);
+		while(true) {
+			var foundIdent = false;
+			for(ident in idents) {
+				final ident = tryParseIdent(ident);
+				if(ident != null) {
+					if(result.contains(ident)) {
+						error("Unexpected identifier", ident.pos);
+					} else {
+						result.push(ident);
+						foundIdent = true;
+					}
 				}
+			}
+			if(!foundIdent) {
+				break;
 			}
 		}
 		return result;
@@ -886,32 +893,48 @@ class Parser {
 	}
 
 	// props
-	public function parseAllAccess(): Array<Access> {
+	public function parseAllAccess(): { access: Array<Access>, other: Array<StringAndPos> } {
+		parseWhitespaceOrComments();
 		final accessorNames = tryParseMultiIdentOneEach("pub", "priv", "static", "override", "dyn",
-			"inline", "macro", "final", "extern", "abstract", "overload");
+			"inline", "macro", "final", "extern", "abstract", "overload", "replace");
 
-		return accessorNames.map(a -> {
-			return switch(a.ident) {
-				case "pub": APublic;
-				case "priv": APrivate;
-				case "static": AStatic;
-				case "override": AOverride;
-				case "dyn": ADynamic;
-				case "inline": AInline;
-				case "macro": AMacro;
-				case "final": AFinal;
-				case "extern": AExtern;
-				case "abstract": AAbstract;
-				case "overload": AOverload;
-				case _: null;
+		final otherNames = ["replace"];
+		final other = []; 
+		for(o in otherNames) {
+			for(name in accessorNames) {
+				if(name.ident == o) {
+					accessorNames.remove(name);
+					other.push(name);
+					break;
+				}
 			}
-		});
+		}
+
+		return {
+			access: accessorNames.map(a -> {
+				return switch(a.ident) {
+					case "pub": APublic;
+					case "priv": APrivate;
+					case "static": AStatic;
+					case "override": AOverride;
+					case "dyn": ADynamic;
+					case "inline": AInline;
+					case "macro": AMacro;
+					case "final": AFinal;
+					case "extern": AExtern;
+					case "abstract": AAbstract;
+					case "overload": AOverload;
+					case _: null;
+				}
+			}),
+			other: other
+		};
 	}
 
-	public function parseAllAccessWithPublic(): Array<Access> {
+	public function parseAllAccessWithPublic(): { access: Array<Access>, other: Array<StringAndPos> } {
 		final accessors = parseAllAccess();
-		if(!accessors.contains(APrivate) && !accessors.contains(APublic)) {
-			accessors.push(APublic);
+		if(!accessors.access.contains(APrivate) && !accessors.access.contains(APublic)) {
+			accessors.access.push(APublic);
 		}
 		return accessors;
 	}

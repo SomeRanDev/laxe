@@ -1,0 +1,30 @@
+class Modify extends Test.LaxeTest:
+	var a = 43
+	var s = "string"
+
+	var text = "I am text"
+	
+	override def test:
+		assert(false)
+	
+	def myFunc:
+		assert(s == "string")
+		return false
+
+modify laxe_feats.Modify:
+	rename a to b
+	rename myFunc to _myFunc
+
+	delete text
+	var text = 123
+
+	replace override def test:
+		assert(b == 43)
+
+		myFunc()
+
+		assert(text == 123)
+
+	def myFunc:
+		assert(_myFunc() == false)
+		return false

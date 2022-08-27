@@ -76,9 +76,19 @@ function LoadFile(f: String, p: Path) {
 }
 
 @:nullSafety(Strict)
+function ApplyModifies() {
+	for(m in Modules) {
+		m.applyModifies(Modules);
+	}
+}
+
+@:nullSafety(Strict)
 function Compile() {
 	for(m in Modules) {
 		m.processModule();
+	}
+	ApplyModifies();
+	for(m in Modules) {
 		m.defineModule();
 	}
 }
