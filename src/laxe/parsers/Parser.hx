@@ -459,7 +459,7 @@ class Parser {
 		parseWhitespaceOrComments();
 		final startIndex = getIndex();
 
-		if(startIndex == nextIdentifierIndex) {
+		if(nextIdentifier != null && startIndex == nextIdentifierIndex) {
 			index = nextIdentifierEndIndex;
 			@:nullSafety(Off) return { ident: nextIdentifier, pos: nextIdentifierPos };
 		}

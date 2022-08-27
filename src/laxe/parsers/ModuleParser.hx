@@ -19,6 +19,7 @@ import laxe.parsers.Parser;
 
 @:nullSafety(Strict)
 enum LaxeModuleMember {
+	Pass(pos: Position);
 	Variable(name: String, pos: Position, meta: Array<MetadataEntry>, type: FieldType, access: Array<Access>);
 	Function(name: String, pos: Position, meta: Array<MetadataEntry>, type: FieldType, access: Array<Access>);
 	Class(name: String, pos: Position, meta: Array<MetadataEntry>, params: Null<Array<TypeParamDecl>>, kind: TypeDefKind, fields: Array<Field>);
@@ -355,6 +356,9 @@ class ModuleParser {
 	function addMemberToTypes(member: LaxeModuleMember, metadata: Parser.Metadata) {
 		var typeDef: Null<TypeDefinition> = null;
 		switch(member) {
+			case Pass(_): {
+				return;
+			}
 			case Variable(name, pos, meta, type, access): {
 				typeDef = {
 					pos: pos,
@@ -450,7 +454,8 @@ class ModuleParser {
 
 	function getPositionFromMember(member: LaxeModuleMember): Position {
 		return switch(member) {
-			case Variable(_, pos, _, _, _) |
+			case Pass(pos) |
+				Variable(_, pos, _, _, _) |
 				Function(_, pos, _, _, _) |
 				Class(_, pos, _, _, _) |
 				TypeAlias(_, pos, _, _, _) |
@@ -505,56 +510,24 @@ class ModuleParser {
 			if(classIndent != null) {
 				while(classIndent == p.getIndent()) {
 					final metadata = p.parseAllNextDecors();
-					final mem = parseFunctionOrVariable();
+					final mem = parseFunctionOrVariable(true);
 					if(mem != null) {
-						final field = convertModuleMemberToField(mem, metadata);
-						if(field != null) {
-							fields.push(field);
-						} else {
-							p.error('Unexpected member in $classTypeName body', getPositionFromMember(mem));
-							break;
+						switch(mem) {
+							case Pass(_): {
+								continue;
+							}
+							case _: {
+								final field = convertModuleMemberToField(mem, metadata);
+								if(field != null) {
+									fields.push(field);
+								} else {
+									p.error('Unexpected member in $classTypeName body', getPositionFromMember(mem));
+									break;
+								}
+							}
 						}
 					} else if(classTypeName == "enum") {
-						final caseStartIndex = p.getIndex();
-						final name = p.parseNextIdent();
-						if(name != null) {
-							if(p.findAndParseNextContent("(")) {
-								final typeList = TypeParser.parseTypeList(p, ")", true);
-								var index = 0;
-								final funcArgs = typeList.map(function(t) {
-									final result: FunctionArg = {
-										name: t.name != null ? t.name : ("_" + index),
-										type: t.type
-									};
-									index++;
-									return result;
-								});
-								fields.push({
-									name: name.ident,
-									pos: p.makePosition(caseStartIndex),
-									kind: FFun({
-										ret: null,
-										params: [],
-										expr: null,
-										args: funcArgs
-									}),
-									meta: [{ name: "#isEnumCase", pos: p.noPosition() }],
-									access: []
-								});
-							} else {
-								final pos = p.makePosition(caseStartIndex);
-								fields.push({
-									name: name.ident,
-									pos: pos,
-									kind: FVar(null, null),
-									meta: [{ name: "#isEnumCase", pos: p.noPosition() }],
-									access: []
-								});
-							}
-							p.findAndParseNextContent(";");
-						} else {
-							p.errorHere("Expected field, function, or identifier for enum case");
-						}
+						parseEnumCase(fields);
 					} else {
 						p.errorHere("Expected field or function");
 						break;
@@ -567,6 +540,49 @@ class ModuleParser {
 		p.setAllowSelf(false);
 
 		return fields;
+	}
+
+	function parseEnumCase(fields: Array<Field>) {
+		final caseStartIndex = p.getIndex();
+		final name = p.parseNextIdent();
+		if(name != null) {
+			if(p.findAndParseNextContent("(")) {
+				final typeList = TypeParser.parseTypeList(p, ")", true);
+				var index = 0;
+				final funcArgs = typeList.map(function(t) {
+					final result: FunctionArg = {
+						name: t.name != null ? t.name : ("_" + index),
+						type: t.type
+					};
+					index++;
+					return result;
+				});
+				fields.push({
+					name: name.ident,
+					pos: p.makePosition(caseStartIndex),
+					kind: FFun({
+						ret: null,
+						params: [],
+						expr: null,
+						args: funcArgs
+					}),
+					meta: [{ name: "#isEnumCase", pos: p.noPosition() }],
+					access: []
+				});
+			} else {
+				final pos = p.makePosition(caseStartIndex);
+				fields.push({
+					name: name.ident,
+					pos: pos,
+					kind: FVar(null, null),
+					meta: [{ name: "#isEnumCase", pos: p.noPosition() }],
+					access: []
+				});
+			}
+			p.findAndParseNextContent(";");
+		} else {
+			p.errorHere("Expected field, function, or identifier for enum case");
+		}
 	}
 
 	function convertModuleMemberToField(m: LaxeModuleMember, metadata: Parser.Metadata): Null<Field> {
@@ -618,7 +634,7 @@ class ModuleParser {
 		return field;
 	}
 
-	function parseFunctionOrVariable(): Null<LaxeModuleMember> {
+	function parseFunctionOrVariable(allowPass: Bool = false): Null<LaxeModuleMember> {
 		final state = p.saveParserState();
 		final startIndex = p.getIndex();
 		final access = p.parseAllAccessWithPublic();
@@ -626,7 +642,13 @@ class ModuleParser {
 		final ident = p.parseNextIdent();
 		if(ident != null) {
 			final name = ident.ident;
-			if(name == "def") {
+			if(allowPass && name == "pass") {
+				if(access.length > 1) {
+					p.error("Pass cannot have access modifiers", p.makePosition(startIndex));
+				}
+				p.parseWhitespaceOrComments();
+				return Pass(ident.pos);
+			} else if(name == "def") {
 				return parseFunctionAfterDef(startIndex, access);
 			} else if(name == "var" || name == "const") {
 				return parseVariableAfterVar(ident, startIndex, access);
@@ -830,7 +852,11 @@ class ModuleParser {
 					}
 				}
 
-				return Enum(name.ident, p.makePosition(startIndex), [], params, enumFields, abstractFields);
+				if(enumFields.length <= 0) {
+					p.error("Enum does not have any cases", name.pos);
+				} else {
+					return Enum(name.ident, p.makePosition(startIndex), [], params, enumFields, abstractFields);
+				}
 			} else {
 				p.errorHere("Expected enum name");
 			}

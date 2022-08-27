@@ -1,0 +1,31 @@
+class Pass extends Test.LaxeTest:
+	override def test:
+		pass
+
+def func1:
+	pass
+
+class MyClass:
+	pass
+	def new:
+		trace("Created!")
+	
+	pass
+	pass
+	pass
+	def toString = "Hello"
+
+def func2:
+	var thisFunc = def(i): pass
+
+	var anotherFunc = def(i):
+		pass
+		pass
+	pass
+	anotherFunc(12)
+	pass
+
+enum MyEnum:
+	ACase
+	pass
+	Case2
