@@ -43,7 +43,7 @@ class ExpressionParser {
 			case "++": OpIncrement;
 			case "--": OpDecrement;
 			case "-": OpNeg;
-			case "!": OpNot;
+			case "!" | "not": OpNot;
 			case "~": OpNegBits;
 			case "...": OpSpread;
 			case _: null;
@@ -66,8 +66,8 @@ class ExpressionParser {
 			case "&": OpAnd;
 			case "|": OpOr;
 			case "^": OpXor;
-			case "&&": OpBoolAnd;
-			case "||": OpBoolOr;
+			case "&&" | "and": OpBoolAnd;
+			case "||" | "or": OpBoolOr;
 			case "<<": OpShl;
 			case ">>": OpShr;
 			case ">>>": OpUShr;

@@ -6,6 +6,7 @@ final PrefixOperators: Array<Operator> = [
 	new Operator("positive", "-", 16),
 	new Operator("negative", "+", 16),
 	new Operator("logicNot", "!", 16),
+	new Operator("logicNot2", "not", 16, true),
 	new Operator("bitNot", "~", 16),
 	new Operator("preDecrement", "--", 16),
 	new Operator("preIncrement", "++", 16),
@@ -47,7 +48,9 @@ final InfixOperators: Array<Operator> = [
 	new Operator("nullOr", "??", 5),
 
 	new Operator("logicAnd", "&&", 4),
+	new Operator("logicAnd2", "and", 4, true),
 	new Operator("logicOr", "||", 3),
+	new Operator("logicOr2", "or", 3, true),
 
 	IntervalOperator,
 	new Operator("in", "in", 2, true),

@@ -1,0 +1,19 @@
+class LogicOps extends Test.LaxeTest:
+	override def test:
+		assert(true)
+		assert(false or true)
+		assert(false || true)
+
+		assert(true && true)
+		assert(true and true and true)
+
+		const falseandfalse = true
+		assert(falseandfalse)
+
+		const falseorfalse = false
+		assert(not falseorfalse)
+		assert(!falseorfalse)
+
+		const nottrue = false
+		assert(not nottrue)
+		assert(!nottrue)
