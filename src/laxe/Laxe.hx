@@ -42,26 +42,32 @@ function GetClassPaths() {
 }
 
 @:nullSafety(Strict)
+function ReadDirectory(path: String): Array<String> {
+	return FileSystem.readDirectory(FileSystem.absolutePath(path));
+}
+
+@:nullSafety(Strict)
 function Start() {
 	final paths = GetClassPaths();
 	for(p in paths) {
 		final path = p.length > 0 ? p : "./";
 		if(FileSystem.exists(path)) {
-			LoadFiles(FileSystem.readDirectory(path), p);
+			LoadFiles(ReadDirectory(path), p);
 		}
 	}
 	Compile();
 }
 
 @:nullSafety(Strict)
-function LoadFiles(files: Array<String>, directoryString: String) {
+function LoadFiles(files: Array<String>, directoryString: String, packageString: String = "") {
 	for(f in files) {
 		final fullPath = Path.join([directoryString, f]);
+		final packagePath = Path.join([packageString, f]);
 		final p = new Path(fullPath);
 		if(p.ext == LaxePathExtension) {
-			LoadFile(fullPath, p);
+			LoadFile(fullPath, new Path(packagePath));
 		} else if(FileSystem.isDirectory(fullPath)) {
-			LoadFiles(FileSystem.readDirectory(fullPath), fullPath);
+			LoadFiles(ReadDirectory(fullPath), fullPath, packagePath);
 		}
 	}
 }

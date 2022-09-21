@@ -16,34 +16,34 @@ final PrefixOperators: Array<Operator> = [
 final IntervalOperator = new Operator("interval", "...", 17);
 
 final InfixOperators: Array<Operator> = [
-	new Operator("dotAccess", ".", 18),
+	new Operator("dotAccess", ".", 19),
 	#if (haxe_ver >= 4.3)
-	new Operator("safeDotAccess", "?.", 18),
+	new Operator("safeDotAccess", "?.", 19),
 	#end
 
-	new Operator("multiply", "*", 15),
-	new Operator("divide", "/", 15),
-	new Operator("modulus", "%", 15),
+	new Operator("multiply", "*", 16),
+	new Operator("divide", "/", 16),
+	new Operator("modulus", "%", 16),
 
-	new Operator("add", "+", 14),
-	new Operator("subtract", "-", 14),
+	new Operator("add", "+", 15),
+	new Operator("subtract", "-", 15),
 
-	new Operator("shiftLeft", "<<", 13),
-	new Operator("shiftRight", ">>", 13),
+	new Operator("shiftLeft", "<<", 14),
+	new Operator("shiftRight", ">>", 14),
 
-	new Operator("spaceship", "<=>", 12),
+	new Operator("spaceship", "<=>", 13),
 
-	new Operator("lessThen", "<", 10),
-	new Operator("lessThanOrEqual", "<=", 10),
-	new Operator("greaterThan", ">", 10),
-	new Operator("greaterThanOrEqual", ">=", 10),
+	new Operator("lessThen", "<", 11),
+	new Operator("lessThanOrEqual", "<=", 11),
+	new Operator("greaterThan", ">", 11),
+	new Operator("greaterThanOrEqual", ">=", 11),
 
-	new Operator("equals", "==", 9),
-	new Operator("notEquals", "!=", 9),
+	new Operator("equals", "==", 10),
+	new Operator("notEquals", "!=", 10),
 
-	new Operator("bitAnd", "&", 8),
-	new Operator("bitXOr", "^", 7),
-	new Operator("bitOr", "|", 6),
+	new Operator("bitAnd", "&", 9),
+	new Operator("bitXOr", "^", 8),
+	new Operator("bitOr", "|", 7),
 
 	new Operator("nullOr", "??", 5),
 
@@ -54,7 +54,6 @@ final InfixOperators: Array<Operator> = [
 
 	IntervalOperator,
 	new Operator("in", "in", 2, true),
-	//new Operator("is", "is", 2, true),
 
 	new Operator("assign", "=", 1),
 	new Operator("addAssign", "+=", 1),

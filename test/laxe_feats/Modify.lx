@@ -11,7 +11,7 @@ class Modify extends Test.LaxeTest:
 		assert(s == "string")
 		return false
 
-modify laxe_feats.Modify:
+modify Modify:
 	rename a to b
 	rename myFunc to _myFunc
 

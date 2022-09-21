@@ -5,7 +5,7 @@ class HaxeMetadata extends Test.LaxeTest:
 		assert(Rtti.hasRtti(RttiHolder));
 
 		const rtti = Rtti.getRtti(RttiHolder);
-		assert(rtti.module == "basic.HaxeMetadata");
+		assert(rtti.module == "HaxeMetadata");
 
 		const m1 = rtti.meta.filter(def(m) = m.name == "Haxe-like Metadata")[0]
 		assert(m1.params.length == 0)

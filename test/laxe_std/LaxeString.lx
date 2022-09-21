@@ -1,4 +1,4 @@
-class String extends Test.LaxeTest:
+class LaxeString extends Test.LaxeTest:
 	override def test:
 		const myStr = "This is a string."
 

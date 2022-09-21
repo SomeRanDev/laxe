@@ -1,0 +1,6 @@
+class IfVar extends Test.LaxeTest:
+	override def test:
+		#var a = fewf
+		#if a matches 
+		pass
+
